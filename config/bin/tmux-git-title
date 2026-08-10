@@ -1,0 +1,5 @@
+#!/bin/sh
+# pane title suffix: " on <branch>" with nerd-font branch glyph (U+E0A0)
+b=$(git -C "$1" branch --show-current 2>/dev/null)
+[ -n "$b" ] && printf ' on \356\202\240 %s' "$b"
+exit 0

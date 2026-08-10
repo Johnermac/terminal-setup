@@ -1,0 +1,2 @@
+# minimal prompt: just ❯ — dir + git branch live in tmux pane title
+format = "$character"
