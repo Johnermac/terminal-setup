@@ -1,7 +1,7 @@
 # terminal-setup
 
-One-command terminal environment: **fish + tmux + starship + fzf/fd/bat/zoxide + lazygit/lazydocker**, Catppuccin Mocha.
-Targets fresh Ubuntu/Debian (WSL2 or native).
+Reproducible devsecops terminal: fish + tmux + starship, dev toolchains, cloud CLIs, security scanners.
+Runs on apt, pacman, dnf, zypper, apk and brew.
 
 ## Install
 
@@ -9,127 +9,109 @@ Targets fresh Ubuntu/Debian (WSL2 or native).
 curl -fsSL https://raw.githubusercontent.com/johnermac/terminal-setup/main/bootstrap.sh | sh
 ```
 
-Or clone first:
-
-```sh
-git clone https://github.com/johnermac/terminal-setup.git ~/projects/terminal-setup
-~/projects/terminal-setup/install.sh
-```
-
-Then the one thing a script can't finish for you — the font (see below):
+Then the font:
 
 ```sh
 ~/projects/terminal-setup/scripts/install-font.sh
 ```
 
-## What install.sh does
+and select **JetBrainsMono Nerd Font** in your terminal emulator.
 
-| Step | Action |
+## Groups
+
+| Group | Contents |
 |---|---|
-| packages | apt: `fish tmux git curl unzip fzf fd-find bat` (only what's missing) |
-| fd shim | `~/.local/bin/fd -> fdfind` (Ubuntu renames the binary) |
-| fzf | rebuilds from source if apt's version is `< 0.48` (`fzf --fish` needs it) |
-| zoxide / starship | official install scripts, skipped when already present |
-| lazygit / lazydocker | latest GitHub release, arch-aware (`x86_64` / `arm64`) |
-| configs | symlinks this repo into `~` (see table below) |
-| fish plugins | fisher, reconciled against `config/fish/fish_plugins` |
-| tmux plugins | TPM clone + non-interactive `install_plugins` |
-| shell | `chsh -s fish`, adding fish to `/etc/shells` first |
-| verify | reports any tool still missing |
+| `base` | git curl wget unzip jq tree htop vim ripgrep fd bat compiler toolchain |
+| `shell` | fish tmux fzf starship zoxide |
+| `cli` | gh lazygit lazydocker delta yq direnv claude |
+| `langs` | go node python uv rust |
+| `cloud` | docker kubectl helm k9s terraform aws |
+| `sec` | nmap tcpdump dig whois socat openssl trivy grype syft gitleaks hadolint cosign semgrep checkov detect-secrets |
+| `config` | dotfile symlinks, fisher, tpm, default shell |
 
-Idempotent — re-running changes nothing that's already correct. Anything it would
-overwrite gets moved to `<file>.bak.<timestamp>` first.
+Opt-in with `--with`:
 
-### Flags
+| Group | Contents |
+|---|---|
+| `pentest` | ffuf gobuster httpx subfinder nuclei katana dnsx assetfinder waybackurls sqlmap |
+| `wordlists` | SecLists (~1 GB) |
+| `ruby` | rbenv, ruby-build, latest stable ruby (compiles from source) |
+| `java` | jdk, maven |
+| `gcloud` | google cloud sdk |
+
+```sh
+./install.sh --dry-run
+./install.sh --with pentest,wordlists
+./install.sh --groups base,shell,config
+./install.sh --without cloud,sec
+./install.sh --list
+```
+
+Re-running changes nothing already correct. Anything it would overwrite becomes `<file>.bak.<timestamp>`.
+
+## Layout
 
 ```
---dry-run         print every command instead of running it
---skip-packages   configs only, no apt / installer scripts
---skip-chsh       leave the login shell alone
---skip-plugins    no fisher / TPM
+install.sh      orchestrator
+bootstrap.sh    curl | sh entrypoint
+lib/            logging, package manager abstraction, package name map
+modules/        one file per group
+config/         dotfiles, symlinked into $HOME
+scripts/        font installer
 ```
-
-Start with `./install.sh --dry-run` on a machine you care about.
-
-## Symlink map
 
 | Repo | Home |
 |---|---|
-| `config/fish/config.fish` | `~/.config/fish/config.fish` |
-| `config/fish/fish_plugins` | `~/.config/fish/fish_plugins` |
-| `config/fish/conf.d/*.fish` | `~/.config/fish/conf.d/` |
-| `config/fish/functions/*.fish` | `~/.config/fish/functions/` |
+| `config/fish/*` | `~/.config/fish/` |
 | `config/starship.toml` | `~/.config/starship.toml` |
 | `config/tmux/tmux.conf` | `~/.tmux.conf` |
+| `config/git/config.inc` | `~/.config/git/terminal-setup.inc`, added to `include.path` |
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
 
-Because they're symlinks, `git pull` updates the live setup — no reinstall.
-Edit configs **in the repo**, commit, push.
+Symlinks, so `git pull` updates the live setup. Edit in the repo, commit, push.
 
-### Machine-specific config
-
-`~/.config/fish/local.fish` is a real file, created empty on install and never
-tracked. `config.fish` sources it last. Put version managers, per-host `PATH`
-entries, and anything with a secret in it there — that's what keeps the repo
-portable across machines.
-
-## Font (only manual step)
-
-Glyphs are rendered by the terminal emulator on the *host*, not by WSL, so the
-font must be installed on Windows. `scripts/install-font.sh` handles both sides:
-it installs JetBrainsMono Nerd Font into `~/.local/share/fonts` and, on WSL, does
-a per-user Windows install (no admin) via `powershell.exe`.
-
-You still pick it in the emulator:
-**Windows Terminal → Settings → profile → Appearance → Font face →
-`JetBrainsMono Nerd Font`, size 14.**
+Host-specific lines go in `~/.config/fish/local.fish` — real file, untracked, sourced last.
 
 ## Adding a tool
 
-1. Add an `install_<tool>` function in `install.sh` — guard with `have <tool> && { skip; return; }`.
-2. Call it from `main()`.
-3. Config file? Drop it under `config/`, add a `link` line in `link_configs`.
-4. Fish plugin? One line in `config/fish/fish_plugins` — `fisher update` picks it up.
+Packaged everywhere: add it to an `ensure_packages` call, and to `lib/packages.sh` if the name differs per distro.
+Binary release: add an `install_<tool>` function in the module, guarded by `have <tool> && { skip; return; }`.
+Fish plugin: one line in `config/fish/fish_plugins`.
 
-## Cheat sheet
+## Keys
 
-### fish
+fish
 
 | Key | Action |
 |---|---|
 | `ctrl+r` | history search (exact; `'term` for fuzzy) |
-| `ctrl+t` | file picker (fd + bat preview) |
-| `alt+c` | dir jump (fd) |
-| `ctrl+/` | toggle preview in `ctrl+r` |
-| `dev <name>` | attach-or-create project session (edit/run/git/claude windows) |
+| `ctrl+t` | file picker |
+| `alt+c` | dir jump |
+| `dev <name>` | attach-or-create project session (edit/run/git/claude) |
 | `dev` | pick session via fzf |
+| `ports` / `serve [port]` | listening sockets / http server in cwd |
 
-### tmux (prefix `C-a`)
+tmux, prefix `C-a`
 
 | Key | Action |
 |---|---|
-| `alt+arrows` | move pane (no prefix) |
+| `alt+arrows` | move pane |
 | `prefix shift+arrows` | resize pane |
-| `prefix \|` / `prefix -` | split h / v (keeps cwd) |
+| `prefix \|` / `prefix -` | split h / v |
 | `prefix S` / `prefix s` | sync panes on / off |
-| `prefix g` | scratch popup shell |
-| `prefix C-j` | session switcher (fzf; `ctrl-x` kills) |
-| `prefix G` | lazygit popup |
-| `prefix D` | lazydocker popup |
-| `prefix /` | incremental scrollback search |
+| `prefix g` | scratch popup |
+| `prefix C-j` | session switcher (`ctrl-x` kills) |
+| `prefix G` / `prefix D` | lazygit / lazydocker popup |
+| `prefix /` | scrollback search |
 | `prefix r` | reload config |
-| `prefix I` | install TPM plugins |
 
 ## Uninstall
 
 ```sh
 find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-title \
   -maxdepth 2 -lname "$PWD/*" -delete
+git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"
 ```
 
-Restore your originals from the `.bak.<timestamp>` files.
-
----
-
-`SETUP.md` is the original hand-run guide, kept as reference for what each block does.
+Originals are in the `.bak.<timestamp>` files.

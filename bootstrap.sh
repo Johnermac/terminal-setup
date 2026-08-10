@@ -1,22 +1,22 @@
 #!/usr/bin/env sh
-# One-liner entrypoint:
-#   curl -fsSL https://raw.githubusercontent.com/<user>/terminal-setup/main/bootstrap.sh | sh
-# Clones (or updates) the repo, then hands off to install.sh. Extra args pass through.
 set -eu
 
 REPO_URL=${TERMINAL_SETUP_REPO:-https://github.com/johnermac/terminal-setup.git}
 REPO_DIR=${TERMINAL_SETUP_DIR:-$HOME/projects/terminal-setup}
 
-command -v git >/dev/null 2>&1 || {
-  echo "installing git..." >&2
-  sudo apt-get update && sudo apt-get install -y git
-}
+if ! command -v git >/dev/null 2>&1; then
+  for pm in "apt-get install -y git" "pacman -S --noconfirm git" "dnf install -y git" \
+            "zypper --non-interactive install git" "apk add git"; do
+    set -- $pm
+    command -v "$1" >/dev/null 2>&1 || continue
+    sudo "$@" && break
+  done
+fi
+command -v git >/dev/null 2>&1 || { echo "git required" >&2; exit 1; }
 
 if [ -d "$REPO_DIR/.git" ]; then
-  echo "==> updating $REPO_DIR"
   git -C "$REPO_DIR" pull --ff-only
 else
-  echo "==> cloning into $REPO_DIR"
   mkdir -p "$(dirname "$REPO_DIR")"
   git clone "$REPO_URL" "$REPO_DIR"
 fi

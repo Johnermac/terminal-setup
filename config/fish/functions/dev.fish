@@ -1,6 +1,5 @@
 function dev --description 'Attach-or-create tmux session for a project (dev <name> [path])'
     if test (count $argv) -eq 0
-        # no args: pick existing session via fzf
         set -l session (tmux list-sessions -F '#S' 2>/dev/null | fzf --height=40% --reverse --prompt='session> ')
         test -n "$session"; or return
         _dev_attach $session
@@ -11,7 +10,6 @@ function dev --description 'Attach-or-create tmux session for a project (dev <na
     set -l dir $argv[2]
 
     if not tmux has-session -t $name 2>/dev/null
-        # resolve project dir: explicit arg > zoxide > ~/projects match > cwd
         if test -z "$dir"
             set dir (zoxide query $name 2>/dev/null)
         end
