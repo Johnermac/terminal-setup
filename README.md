@@ -70,13 +70,24 @@ scripts/        font installer
 
 Symlinks, so `git pull` updates the live setup. Edit in the repo, commit, push.
 
-Host-specific lines go in `~/.config/fish/local.fish` — real file, untracked, sourced last.
+Host-specific lines go in `~/.config/fish/local.fish`. Real file, untracked, sourced last.
 
 ## Adding a tool
 
 Packaged everywhere: add it to an `ensure_packages` call, and to `lib/packages.sh` if the name differs per distro.
 Binary release: add an `install_<tool>` function in the module, guarded by `have <tool> && { skip; return; }`.
 Fish plugin: one line in `config/fish/fish_plugins`.
+
+## Dev
+
+Hooks run via [lefthook](https://github.com/evilmartians/lefthook): shellcheck, shfmt, trailing whitespace on commit; conventional commit format on commit-msg.
+
+```sh
+go install github.com/evilmartians/lefthook@latest   # or: brew install lefthook
+lefthook install
+```
+
+Needs `shellcheck` and `shfmt` on PATH.
 
 ## Keys
 
