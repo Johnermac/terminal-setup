@@ -24,9 +24,10 @@ link_dotfiles() {
   link "$REPO_DIR/config/tmux/tmux.conf" "$HOME/.tmux.conf"
   link "$REPO_DIR/config/bin/tmux-git-title" "$HOME/.local/bin/tmux-git-title"
   link "$REPO_DIR/config/bin/claude-tmux" "$HOME/.local/bin/claude-tmux"
+  link "$REPO_DIR/config/bin/claude-guard" "$HOME/.local/bin/claude-guard"
   link "$REPO_DIR/config/git/config.inc" "$HOME/.config/git/terminal-setup.inc"
   link "$REPO_DIR/config/atuin/config.toml" "$HOME/.config/atuin/config.toml"
-  run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/claude-tmux"
+  run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/claude-tmux" "$REPO_DIR/config/bin/claude-guard"
 }
 
 link_claude_hooks() {
@@ -41,20 +42,21 @@ link_claude_hooks() {
   [ "$DRY_RUN" = 1 ] && return
 
   tmp=$(mktemp)
-  jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" '
-    .hooks = ((.hooks // {}) | with_entries(.value |= map(select([.hooks[]?.command] | any(test("claude-tmux")) | not))) | with_entries(select(.value | length > 0)))
+  jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" --slurpfile b "$REPO_DIR/config/claude/settings.base.json" '
+    .hooks = ((.hooks // {}) | with_entries(.value |= map(select([.hooks[]?.command] | any(test("claude-tmux|claude-guard")) | not))) | with_entries(select(.value | length > 0)))
     | reduce ($h[0] | to_entries[]) as $e (.; .hooks[$e.key] = ((.hooks[$e.key] // []) + $e.value))
+    | .permissions.deny = (((.permissions.deny // []) + $b[0].permissions.deny) | unique)
   ' "$settings" >"$tmp"
 
   if jq -e --slurpfile a "$settings" '. == $a[0]' "$tmp" >/dev/null; then
     rm -f "$tmp"
-    skip "claude hooks"
+    skip "claude hooks and deny rules"
     return
   fi
 
   cp "$settings" "$settings.bak.$BACKUP_STAMP"
   mv "$tmp" "$settings"
-  ok "claude hooks -> $settings"
+  ok "claude hooks and deny rules -> $settings"
 }
 
 link_gitconfig() {

@@ -70,7 +70,9 @@ patches/        source patches applied by opt-in groups
 | `config/git/config.inc` | `~/.config/git/terminal-setup.inc`, added to `include.path` |
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
 | `config/bin/claude-tmux` | `~/.local/bin/claude-tmux` |
+| `config/bin/claude-guard` | `~/.local/bin/claude-guard` |
 | `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
+| `config/claude/settings.base.json` | `permissions.deny` merged into `~/.claude/settings.json` |
 | `config/atuin/config.toml` | `~/.config/atuin/config.toml` |
 
 Symlinks, so `git pull` updates the live setup. Edit in the repo, commit, push.
@@ -145,6 +147,23 @@ set -gx AWS_PROD_PROFILES mgmt audit-mgmt
 
 `aic`, `why` and `tfr` call `claude -p` with no tools and hooks disabled, so they never touch files or the tmux Claude state.
 
+## Claude prod guard
+
+`claude-guard` runs before every Bash command Claude issues. On a profile listed in `AWS_PROD_PROFILES` it forces a confirmation prompt, even in auto mode, for:
+
+- any `aws` call that is not a read (`describe-*`, `list-*`, `get-*`, `s3 ls`, `logs tail`, `sts` and similar pass)
+- `terraform` or `tofu` `apply`, `destroy`, `import`, `taint`, `untaint`, `force-unlock`, `state rm|mv|push`
+
+The profile comes from `--profile`, then an inline `AWS_PROFILE=`, then the environment. Force pushes always ask. `aws-vault` is denied: it stays a human-only breakglass path.
+
+Claude Code may start outside fish, so set the list in `~/.claude/settings.json` too:
+
+```json
+"env": { "AWS_PROD_PROFILES": "mgmt audit-mgmt" }
+```
+
+`settings.base.json` adds deny rules so Claude cannot read AWS credential caches, SSH private keys or `~/.gnupg`.
+
 ## Border boxes
 
 `--with tmux-boxes` builds tmux 3.7b with `patches/tmux-3.7b.patch`. Every pane gets its own rounded box, at the cost of 2 rows and 2 columns per pane. Boxes turn off in windows with a single pane and while a pane is zoomed. Clicking a box focuses its pane, dragging a box edge or the gap resizes.
@@ -159,7 +178,7 @@ The config enables it only when the running tmux has the `pane-border-boxes` opt
 
 ```sh
 find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-title \
-  ~/.local/bin/claude-tmux \
+  ~/.local/bin/claude-tmux ~/.local/bin/claude-guard \
   -maxdepth 2 -lname "$PWD/*" -delete
 git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"

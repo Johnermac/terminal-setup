@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(aws-vault:*)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.aws/sso/cache/**)",
+      "Read(~/.aws/cli/cache/**)",
+      "Read(~/.ssh/id_*)",
+      "Read(~/.gnupg/**)"
+    ]
+  }
+}
