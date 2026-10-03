@@ -91,6 +91,15 @@ mktmp() { mktemp -d "${TMPDIR:-/tmp}/terminal-setup.XXXXXX"; }
 
 install_bin() { sudo_run install -m 0755 "$1" "/usr/local/bin/$(basename "$1")"; }
 
+install_tar_bins() {
+  local url=$1 tmp m
+  shift
+  tmp=$(mktmp)
+  run_sh "curl -fsSL '$url' | tar xz -C '$tmp'"
+  for m in "$@"; do install_bin "$tmp/$m"; done
+  run rm -rf "$tmp"
+}
+
 version_ge() {
   [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
 }

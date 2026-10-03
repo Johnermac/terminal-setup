@@ -101,6 +101,123 @@ install_yq() {
   ok "yq $v"
 }
 
+install_eza() {
+  have eza && {
+    skip "eza"
+    return
+  }
+  local v a
+  a=$(arch_uname)
+  [ "$a" = unsupported ] && {
+    warn "eza: unsupported arch"
+    return
+  }
+  v=$(latest_tag eza-community/eza) || {
+    warn "eza: release lookup failed"
+    return
+  }
+  install_tar_bins "https://github.com/eza-community/eza/releases/download/v${v}/eza_${a}-unknown-linux-gnu.tar.gz" eza
+  ok "eza $v"
+}
+
+install_xh() {
+  have xh && {
+    skip "xh"
+    return
+  }
+  local v a
+  a=$(arch_uname)
+  [ "$a" = unsupported ] && {
+    warn "xh: unsupported arch"
+    return
+  }
+  v=$(latest_tag ducaale/xh) || {
+    warn "xh: release lookup failed"
+    return
+  }
+  install_tar_bins "https://github.com/ducaale/xh/releases/download/v${v}/xh-v${v}-${a}-unknown-linux-musl.tar.gz" "xh-v${v}-${a}-unknown-linux-musl/xh"
+  ok "xh $v"
+}
+
+install_fx() {
+  have fx && {
+    skip "fx"
+    return
+  }
+  local v a tmp
+  a=$(arch_go)
+  [ "$a" = unsupported ] && {
+    warn "fx: unsupported arch"
+    return
+  }
+  v=$(latest_tag antonmedv/fx) || {
+    warn "fx: release lookup failed"
+    return
+  }
+  tmp=$(mktmp)
+  run_sh "curl -fsSL -o '$tmp/fx' 'https://github.com/antonmedv/fx/releases/download/${v}/fx_$(os_name)_${a}'"
+  install_bin "$tmp/fx"
+  run rm -rf "$tmp"
+  ok "fx $v"
+}
+
+install_dust() {
+  have dust && {
+    skip "dust"
+    return
+  }
+  local v a
+  a=$(arch_uname)
+  [ "$a" = unsupported ] && {
+    warn "dust: unsupported arch"
+    return
+  }
+  v=$(latest_tag bootandy/dust) || {
+    warn "dust: release lookup failed"
+    return
+  }
+  install_tar_bins "https://github.com/bootandy/dust/releases/download/v${v}/dust-v${v}-${a}-unknown-linux-musl.tar.gz" "dust-v${v}-${a}-unknown-linux-musl/dust"
+  ok "dust $v"
+}
+
+install_btop() {
+  have btop && {
+    skip "btop"
+    return
+  }
+  local v a
+  a=$(arch_uname)
+  [ "$a" = unsupported ] && {
+    warn "btop: unsupported arch"
+    return
+  }
+  v=$(latest_tag aristocratos/btop) || {
+    warn "btop: release lookup failed"
+    return
+  }
+  install_tar_bins "https://github.com/aristocratos/btop/releases/download/v${v}/btop-${a}-unknown-linux-musl.tar.gz" btop/bin/btop
+  ok "btop $v"
+}
+
+install_atuin() {
+  atuin --version >/dev/null 2>&1 && {
+    skip "atuin"
+    return
+  }
+  local v a
+  a=$(arch_uname)
+  [ "$a" = unsupported ] && {
+    warn "atuin: unsupported arch"
+    return
+  }
+  v=$(latest_tag atuinsh/atuin) || {
+    warn "atuin: release lookup failed"
+    return
+  }
+  install_tar_bins "https://github.com/atuinsh/atuin/releases/download/v${v}/atuin-${a}-unknown-linux-musl.tar.gz" "atuin-${a}-unknown-linux-musl/atuin"
+  ok "atuin $v"
+}
+
 install_claude() {
   have claude && {
     skip "claude"
@@ -114,7 +231,7 @@ group_cli() {
   step "cli tools"
 
   if [ "$PM" = brew ]; then
-    ensure_packages gh lazygit lazydocker git-delta yq direnv
+    ensure_packages gh lazygit lazydocker git-delta yq direnv eza xh fx dust btop atuin
     install_claude
     return
   fi
@@ -125,5 +242,11 @@ group_cli() {
   install_lazydocker
   install_delta
   install_yq
+  install_eza
+  install_xh
+  install_fx
+  install_dust
+  install_btop
+  install_atuin
   install_claude
 }

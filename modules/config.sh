@@ -25,6 +25,7 @@ link_dotfiles() {
   link "$REPO_DIR/config/bin/tmux-git-title" "$HOME/.local/bin/tmux-git-title"
   link "$REPO_DIR/config/bin/claude-tmux" "$HOME/.local/bin/claude-tmux"
   link "$REPO_DIR/config/git/config.inc" "$HOME/.config/git/terminal-setup.inc"
+  link "$REPO_DIR/config/atuin/config.toml" "$HOME/.config/atuin/config.toml"
   run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/claude-tmux"
 }
 
@@ -83,6 +84,16 @@ install_fisher() {
   ok "fish plugins synced"
 }
 
+import_atuin_history() {
+  have atuin || return 0
+  if [ -f "$HOME/.local/share/atuin/history.db" ]; then
+    skip "atuin history"
+  else
+    run atuin import fish
+    ok "fish history imported into atuin"
+  fi
+}
+
 install_tpm() {
   have tmux || {
     warn "tmux not installed"
@@ -134,6 +145,7 @@ group_config() {
   link_dotfiles
   link_gitconfig
   link_claude_hooks
+  import_atuin_history
   step "fish plugins"
   install_fisher
   step "tmux plugins"

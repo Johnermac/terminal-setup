@@ -31,6 +31,7 @@ if status is-interactive
 
     zoxide init fish | source
     starship init fish | source
+    command -q atuin; and atuin init fish --disable-up-arrow | source
 
     abbr -a g git
     abbr -a gs git status
@@ -49,7 +50,12 @@ if status is-interactive
     abbr -a tf terraform
     abbr -a cat bat
     abbr -a bcp 'bat -p'
-    abbr -a ll 'ls -lah'
+    if command -q eza
+        abbr -a ll 'eza -la --git --icons --group-directories-first'
+        abbr -a lt 'eza --tree --level=2 --git-ignore --icons'
+    else
+        abbr -a ll 'ls -lah'
+    end
 end
 
 test -f ~/.config/fish/local.fish; and source ~/.config/fish/local.fish
