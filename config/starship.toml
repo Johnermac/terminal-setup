@@ -1,1 +1,31 @@
 format = "$character"
+right_format = "${custom.aws_prod}$aws$kubernetes$terraform"
+
+[aws]
+format = '([$symbol$profile( $region)( $duration)]($style) )'
+symbol = " "
+style = "yellow"
+expiration_symbol = ""
+
+[aws.profile_aliases]
+audit-security = ""
+
+[aws.region_aliases]
+us-east-1 = ""
+us-east-2 = "use2"
+
+[custom.aws_prod]
+when = 'case " $AWS_PROD_PROFILES " in *" $AWS_PROFILE "*) [ -n "$AWS_PROFILE" ] ;; *) false ;; esac'
+shell = ["sh"]
+format = "[ PROD ]($style) "
+style = "bold white bg:red"
+
+[kubernetes]
+disabled = false
+format = '[$symbol$context( \($namespace\))]($style) '
+style = "cyan"
+
+[terraform]
+format = '[$symbol$workspace]($style) '
+symbol = "\U000f1062 "
+style = "purple"

@@ -133,6 +133,32 @@ install_awscli() {
   ok "aws"
 }
 
+install_granted() {
+  have granted && {
+    skip "granted"
+    return
+  }
+  if [ "$PM" = brew ]; then
+    ensure_packages granted
+    return
+  fi
+  local v a
+  case "$(uname -m)" in
+    x86_64 | amd64) a=x86_64 ;;
+    aarch64 | arm64) a=arm64 ;;
+    *)
+      warn "granted: unsupported arch"
+      return
+      ;;
+  esac
+  v=$(latest_tag fwdcloudsec/granted) || {
+    warn "granted: release lookup failed"
+    return
+  }
+  install_tar_bins "https://github.com/fwdcloudsec/granted/releases/download/v${v}/granted_${v}_linux_${a}.tar.gz" granted assumego assume assume.fish
+  ok "granted $v"
+}
+
 group_cloud() {
   step "docker"
   install_docker
@@ -143,4 +169,5 @@ group_cloud() {
   step "infrastructure"
   install_terraform
   install_awscli
+  install_granted
 }
