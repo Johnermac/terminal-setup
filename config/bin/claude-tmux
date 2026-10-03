@@ -21,6 +21,7 @@ state() {
   else
     tmux set -pu -t "$1" @claude
   fi
+  tmux refresh-client -S
 } 2>/dev/null
 
 unpend() { case " $(get) " in *" $1 "*) put "$(drop "$1")" ;; esac; }
