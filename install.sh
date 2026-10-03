@@ -38,9 +38,10 @@ list_groups() {
   cat <<LIST
 base      git curl wget unzip jq tree htop vim ripgrep fd bat build toolchain
 shell     fish tmux fzf starship zoxide
-cli       gh lazygit lazydocker delta yq direnv claude
+cli       gh lazygit lazydocker delta yq direnv claude eza xh fx dust
+          btop atuin
 langs     go node python uv rust
-cloud     docker kubectl helm k9s terraform aws
+cloud     docker kubectl helm k9s terraform aws granted
 sec       nmap tcpdump dig whois socat openssl trivy grype syft gitleaks
           hadolint cosign semgrep checkov detect-secrets
 config    dotfile symlinks, fisher, tpm, default shell

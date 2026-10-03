@@ -23,9 +23,9 @@ and select **JetBrainsMono Nerd Font** in your terminal emulator.
 |---|---|
 | `base` | git curl wget unzip jq tree htop vim ripgrep fd bat compiler toolchain |
 | `shell` | fish tmux fzf starship zoxide |
-| `cli` | gh lazygit lazydocker delta yq direnv claude |
+| `cli` | gh lazygit lazydocker delta yq direnv claude eza xh fx dust btop atuin |
 | `langs` | go node python uv rust |
-| `cloud` | docker kubectl helm k9s terraform aws |
+| `cloud` | docker kubectl helm k9s terraform aws granted |
 | `sec` | nmap tcpdump dig whois socat openssl trivy grype syft gitleaks hadolint cosign semgrep checkov detect-secrets |
 | `config` | dotfile symlinks, fisher, tpm, default shell |
 
@@ -71,6 +71,7 @@ patches/        source patches applied by opt-in groups
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
 | `config/bin/claude-tmux` | `~/.local/bin/claude-tmux` |
 | `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
+| `config/atuin/config.toml` | `~/.config/atuin/config.toml` |
 
 Symlinks, so `git pull` updates the live setup. Edit in the repo, commit, push.
 
@@ -99,12 +100,17 @@ fish
 
 | Key | Action |
 |---|---|
-| `ctrl+r` | history search (exact; `'term` for fuzzy) |
+| `ctrl+r` | atuin history search (fuzzy; `ctrl+r` again cycles global/host/session/directory) |
 | `ctrl+t` | file picker |
 | `alt+c` | dir jump |
 | `dev <name>` | attach-or-create project session (edit/run/git/claude) |
 | `dev` | pick session via fzf |
 | `ports` / `serve [port]` | listening sockets / http server in cwd |
+| `ll` / `lt` | eza long list with git status / tree |
+| `assume [profile]` | export AWS credentials for a profile into this shell (granted); `assume -c` opens the console, `assume --un` drops back |
+| `aic` | Claude writes the commit subject for the staged diff, you confirm (`y`), edit (`e`) or abort |
+| `why` | re-runs the last command and asks Claude for cause and fix; or pipe: `cmd 2>&1 \| why` |
+| `tfr [planfile]` | Claude risk review of a terraform plan; runs `terraform plan` when no file is given |
 
 tmux, prefix `C-a`
 
@@ -128,6 +134,16 @@ tmux, prefix `C-a`
 When Claude finishes or waits for a permission answer in a pane you are not looking at, tmux flashes `✻ session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
 
 Each pane's border title shows Claude's state: `●` working, `?` waiting for permission, `✓` finished and not yet visited. Window tabs show the same icon for any pane in that window. Exiting Claude clears it.
+
+## AWS prompt
+
+The right prompt shows the active AWS profile, the region when it is not us-east-1 and, after `assume`, time left on the credentials. Profiles aliased to `""` in `[aws.profile_aliases]` (the read-only default) show nothing. Profiles listed in `AWS_PROD_PROFILES` get a red `PROD` badge. Set it in `local.fish`:
+
+```fish
+set -gx AWS_PROD_PROFILES mgmt audit-mgmt
+```
+
+`aic`, `why` and `tfr` call `claude -p` with no tools and hooks disabled, so they never touch files or the tmux Claude state.
 
 ## Border boxes
 
