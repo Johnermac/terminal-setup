@@ -39,12 +39,12 @@ case "$1" in
     viewing=$(tmux display -p -t "$p" '#{&&:#{session_attached},#{&&:#{window_active},#{pane_active}}}')
     if [ "$event" = Notification ]; then
       state "$p" wait
-      mark="󰚩?"
+      mark="✻?"
     elif [ "$viewing" = 1 ]; then
       state "$p" ""
     else
       state "$p" "done"
-      mark="󰚩"
+      mark="✻"
     fi
     [ "$viewing" = 1 ] && exit 0
     put "$p $(drop "$p")"

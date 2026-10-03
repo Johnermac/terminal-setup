@@ -126,7 +126,7 @@ tmux, prefix `C-a`
 
 ## Claude notifications
 
-When Claude finishes or waits for a permission answer in a pane you are not looking at, tmux flashes `󰚩 session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
+When Claude finishes or waits for a permission answer in a pane you are not looking at, tmux flashes `✻ session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
 
 Each pane's border title shows Claude's state: `●` working, `?` waiting for permission, `✓` finished and not yet visited. Window tabs show the same icon for any pane in that window. Exiting Claude clears it.
 
