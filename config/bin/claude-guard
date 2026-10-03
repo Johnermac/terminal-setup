@@ -3,15 +3,9 @@
 cmd=$(jq -r '.tool_input.command // empty')
 [ -n "$cmd" ] || exit 0
 
-ask() {
-  jq -nc --arg r "claude-guard: $1" \
-    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: $r}}'
-  exit 0
-}
-
-deny() {
-  jq -nc --arg r "claude-guard: $1" \
-    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
+decide() {
+  jq -nc --arg d "$1" --arg r "claude-guard: $2" \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $d, permissionDecisionReason: $r}}'
   exit 0
 }
 
@@ -21,10 +15,25 @@ is_prod() {
   return 1
 }
 
-default_profile=${AWS_PROFILE:-}
-if [[ $cmd =~ AWS_PROFILE=[\"\']?([A-Za-z0-9_.-]+) ]]; then
-  default_profile=${BASH_REMATCH[1]}
-fi
+flat=$(printf '%s' "$cmd" | tr -d "\"'\\\\")
+read -ra words <<<"$(printf '%s' "$flat" | tr '\n\t=(){}`;|&<>' ' ')"
+
+for w in "${words[@]}"; do
+  [ "${w##*/}" = aws-vault ] && decide deny "aws-vault is the human-only breakglass path"
+done
+
+prod=""
+is_prod "${AWS_PROFILE:-}" && prod=${AWS_PROFILE}
+is_prod "${AWS_DEFAULT_PROFILE:-}" && prod=${AWS_DEFAULT_PROFILE}
+for ((j = 0; j < ${#words[@]}; j++)); do
+  w=${words[j]}
+  is_prod "$w" && prod=$w
+  case "$w" in
+    --profile | AWS_PROFILE | AWS_DEFAULT_PROFILE)
+      [ "${words[j + 1]:0:1}" = '$' ] && prod="dynamic ${words[j + 1]}"
+      ;;
+  esac
+done
 
 aws_read_op() {
   case "$1" in
@@ -38,62 +47,61 @@ aws_read_op() {
 
 check_segment() {
   local -a t
-  read -ra t <<<"$1"
-  local i=0 n=${#t[@]} profile=$default_profile svc="" op="" tf=""
+  read -ra t <<<"$(printf '%s' "$1" | tr '(){}' ' ')"
+  local n=${#t[@]} i c=0 w
 
-  for ((j = 0; j < n; j++)); do
-    [ "${t[j]}" = --profile ] && profile=${t[j + 1]:-}
-    [[ ${t[j]} == --profile=* ]] && profile=${t[j]#--profile=}
+  for ((i = 0; i < n; i++)); do
+    if [ "${t[i]##*/}" = git ] && [ "${t[i + 1]:-}" = push ]; then
+      for w in "${t[@]:i+2}"; do
+        case "$w" in --force | -f | --force-if-includes | +*) decide ask "force push" ;; esac
+      done
+    fi
   done
 
-  while [ "$i" -lt "$n" ]; do
-    case "${t[i]}" in
-      aws-vault) deny "aws-vault is the human-only breakglass path" ;;
-      git)
-        if [ "${t[i + 1]:-}" = push ]; then
-          local w
-          for w in "${t[@]:i}"; do
-            case "$w" in --force | -f | --force-if-includes) ask "force push" ;; esac
-          done
-        fi
-        ;;
+  [ -n "$prod" ] || return 0
+
+  while [ "$c" -lt "$n" ]; do
+    case "${t[c]##*/}" in
+      sudo | doas | env | command | builtin | nohup | exec | time | nice | ionice | stdbuf | timeout | xargs | -* | [0-9]* | [A-Za-z_]*=*) c=$((c + 1)) ;;
+      *) break ;;
+    esac
+  done
+  [ "${t[c]:0:1}" = '$' ] && decide ask "dynamic command ${t[c]} with prod profile $prod"
+
+  for ((i = 0; i < n; i++)); do
+    case "${t[i]##*/}" in
       aws)
         local k=$((i + 1))
         while [ "$k" -lt "$n" ]; do
           case "${t[k]}" in
-            --debug | --no-cli-pager | --no-paginate | --no-verify-ssl | --no-sign-request | --cli-auto-prompt) k=$((k + 1)) ;;
+            --debug | --no-cli-pager | --no-paginate | --no-verify-ssl | --no-sign-request | --cli-auto-prompt | --no-cli-auto-prompt) k=$((k + 1)) ;;
             --*=*) k=$((k + 1)) ;;
             --*) k=$((k + 2)) ;;
             *) break ;;
           esac
         done
-        svc=${t[k]:-}
-        op=${t[k + 1]:-}
-        if ! aws_read_op "$svc" "$op" && is_prod "$profile"; then
-          ask "aws $svc $op on prod profile $profile"
-        fi
+        aws_read_op "${t[k]:-}" "${t[k + 1]:-}" || decide ask "aws ${t[k]:-} ${t[k + 1]:-} with prod profile $prod"
         ;;
       terraform | tofu)
-        tf=${t[i + 1]:-}
-        [[ $tf == -chdir=* ]] && tf=${t[i + 2]:-}
-        case "$tf" in
-          apply | destroy | import | taint | untaint | force-unlock)
-            is_prod "$profile" && ask "terraform $tf on prod profile $profile"
-            ;;
-          state)
-            case "${t[i + 2]:-}" in
-              rm | mv | push | replace-provider) is_prod "$profile" && ask "terraform state ${t[i + 2]} on prod profile $profile" ;;
+        local k=$((i + 1))
+        [[ ${t[k]:-} == -* ]] && k=$((k + 1))
+        case "${t[k]:-}" in
+          plan | show | output | validate | fmt | init | providers | version | graph | console | -help | -version) ;;
+          state | workspace)
+            case "${t[k + 1]:-}" in
+              list | show) ;;
+              *) decide ask "terraform ${t[k]} ${t[k + 1]:-} with prod profile $prod" ;;
             esac
             ;;
+          *) decide ask "terraform ${t[k]:-} with prod profile $prod" ;;
         esac
         ;;
     esac
-    i=$((i + 1))
   done
 }
 
 while IFS= read -r seg; do
   check_segment "$seg"
-done < <(printf '%s\n' "$cmd" | sed -E 's/(&&|\|\||;|\|)/\n/g')
+done < <(printf '%s\n' "$flat" | sed -E 's/(&&|\|\||;|\||&|`|\$\(|\(|\))/\n/g')
 
 exit 0

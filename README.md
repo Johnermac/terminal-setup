@@ -149,12 +149,14 @@ set -gx AWS_PROD_PROFILES mgmt audit-mgmt
 
 ## Claude prod guard
 
-`claude-guard` runs before every Bash command Claude issues. On a profile listed in `AWS_PROD_PROFILES` it forces a confirmation prompt, even in auto mode, for:
+`claude-guard` runs before every Bash command Claude issues. A command is in prod context when the environment profile is listed in `AWS_PROD_PROFILES`, when any word of the command is a listed profile, or when a profile comes from a variable. In prod context it forces a confirmation prompt, even in auto mode, unless every `aws` and `terraform` call is a known read:
 
-- any `aws` call that is not a read (`describe-*`, `list-*`, `get-*`, `s3 ls`, `logs tail`, `sts` and similar pass)
-- `terraform` or `tofu` `apply`, `destroy`, `import`, `taint`, `untaint`, `force-unlock`, `state rm|mv|push`
+- `aws`: `describe-*`, `list-*`, `get-*`, `s3 ls`, `logs tail`, `sts` and similar
+- `terraform` or `tofu`: `plan`, `show`, `output`, `validate`, `fmt`, `init`, `state list|show`, `workspace list|show`
 
-The profile comes from `--profile`, then an inline `AWS_PROFILE=`, then the environment. Force pushes always ask. `aws-vault` is denied: it stays a human-only breakglass path.
+A command that is itself a variable (`$x ...`) also asks in prod context. Force pushes, including `+refspec`, always ask. Any mention of `aws-vault` is denied: it stays a human-only breakglass path.
+
+It reads the command text, so scripts and SDK code that call AWS internally get through. IAM is the real boundary: keep the default profile read-only.
 
 Claude Code may start outside fish, so set the list in `~/.claude/settings.json` too:
 
