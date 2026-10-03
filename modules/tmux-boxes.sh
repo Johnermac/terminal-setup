@@ -3,7 +3,7 @@
 TMUX_BOXES_TAG=3.7b
 
 install_tmux_boxes() {
-  local patch="$REPO_DIR/patches/tmux-$TMUX_BOXES_TAG-border-boxes.patch"
+  local patch="$REPO_DIR/patches/tmux-$TMUX_BOXES_TAG.patch"
   local stamp="$HOME/.local/share/terminal-setup/tmux-boxes.stamp"
   local want src
   want="$TMUX_BOXES_TAG $(git hash-object "$patch")"

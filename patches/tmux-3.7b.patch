@@ -235,6 +235,30 @@ index 52886f0..49f98f2 100644
  	if (pane_status == PANE_STATUS_TOP)
  		pane_status_line = wp->yoff - 1;
  	else if (pane_status == PANE_STATUS_BOTTOM)
+diff --git a/server-fn.c b/server-fn.c
+index 16cda75..14f47c9 100644
+--- a/server-fn.c
++++ b/server-fn.c
+@@ -438,6 +438,7 @@ server_destroy_session(struct session *s)
+ {
+ 	struct client	*c;
+ 	struct session	*s_new = NULL, *cs_new = NULL, *use_s;
++	struct sort_criteria sort_crit = { .order = SORT_NAME };
+ 	int		 detach_on_destroy;
+ 
+ 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
+@@ -446,9 +447,9 @@ server_destroy_session(struct session *s)
+ 	else if (detach_on_destroy == 2)
+ 		s_new = server_find_session(s, server_newer_detached_session);
+ 	else if (detach_on_destroy == 3)
+-		s_new = session_previous_session(s, NULL);
++		s_new = session_previous_session(s, &sort_crit);
+ 	else if (detach_on_destroy == 4)
+-		s_new = session_next_session(s, NULL);
++		s_new = session_next_session(s, &sort_crit);
+ 
+ 	/*
+ 	 * If no suitable new session was found above, then look for any
 diff --git a/tmux.h b/tmux.h
 index 5dc86b2..ef26ff3 100644
 --- a/tmux.h
@@ -278,6 +302,20 @@ index 3dab31b..501b8e1 100644
  	{ "\302\267",	  0, 2, 1 }  /* U+00B7 */
  };
  
+diff --git a/window-tree.c b/window-tree.c
+index 3508ddb..b1751eb 100644
+--- a/window-tree.c
++++ b/window-tree.c
+@@ -1309,6 +1309,9 @@ again:
+ 		    PROMPT_TYPE_COMMAND);
+ 		free(prompt);
+ 		break;
++	case 'x'|KEYC_CTRL:
++		window_tree_kill_current_callback(c, data, "y", 1);
++		break;
+ 	case 'X':
+ 		tagged = mode_tree_count_tagged(data->data);
+ 		if (tagged == 0)
 diff --git a/window.c b/window.c
 index 00ed1a0..7f25a98 100644
 --- a/window.c

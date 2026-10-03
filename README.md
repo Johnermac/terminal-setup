@@ -70,7 +70,6 @@ patches/        source patches applied by opt-in groups
 | `config/git/config.inc` | `~/.config/git/terminal-setup.inc`, added to `include.path` |
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
 | `config/bin/claude-tmux` | `~/.local/bin/claude-tmux` |
-| `config/bin/tmux-sessions` | `~/.local/bin/tmux-sessions` |
 | `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
 
 Symlinks, so `git pull` updates the live setup. Edit in the repo, commit, push.
@@ -116,7 +115,7 @@ tmux, prefix `C-a`
 | `prefix \|` / `prefix -` | split h / v |
 | `prefix S` / `prefix s` | sync panes on / off |
 | `prefix g` | scratch popup |
-| `prefix C-j` | session switcher with Claude state and live preview (`ctrl-x` kills) |
+| `prefix C-j` | session tree with Claude state and live preview (`ctrl-x` kills, `→` expands) |
 | `prefix j` | jump to latest Claude pane that finished |
 | `prefix J` | pick from pending Claude panes (`ctrl-x` clears) |
 | `prefix G` / `prefix D` | lazygit / lazydocker popup |
@@ -132,7 +131,9 @@ Each pane's border title shows Claude's state: `●` working, `?` waiting for pe
 
 ## Border boxes
 
-`--with tmux-boxes` builds tmux 3.7b with `patches/tmux-3.7b-border-boxes.patch`. Every pane gets its own rounded box, at the cost of 2 rows and 2 columns per pane. Boxes turn off in windows with a single pane and while a pane is zoomed. Clicking a box focuses its pane, dragging a box edge or the gap resizes.
+`--with tmux-boxes` builds tmux 3.7b with `patches/tmux-3.7b.patch`. Every pane gets its own rounded box, at the cost of 2 rows and 2 columns per pane. Boxes turn off in windows with a single pane and while a pane is zoomed. Clicking a box focuses its pane, dragging a box edge or the gap resizes.
+
+The patch also adds `ctrl-x` to kill in the session tree, and fixes a 3.7b crash when `detach-on-destroy` is `next` or `previous`. Killing the current session moves the client to the next session by name.
 
 The same block turns on 3.7 features stock 3.2a lacks: extended keys (Shift+Enter reaches Claude Code), OSC 8 hyperlinks, synchronized output, rounded popups.
 
@@ -142,7 +143,7 @@ The config enables it only when the running tmux has the `pane-border-boxes` opt
 
 ```sh
 find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-title \
-  ~/.local/bin/claude-tmux ~/.local/bin/tmux-sessions \
+  ~/.local/bin/claude-tmux \
   -maxdepth 2 -lname "$PWD/*" -delete
 git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"

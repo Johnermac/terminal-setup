@@ -24,9 +24,8 @@ link_dotfiles() {
   link "$REPO_DIR/config/tmux/tmux.conf" "$HOME/.tmux.conf"
   link "$REPO_DIR/config/bin/tmux-git-title" "$HOME/.local/bin/tmux-git-title"
   link "$REPO_DIR/config/bin/claude-tmux" "$HOME/.local/bin/claude-tmux"
-  link "$REPO_DIR/config/bin/tmux-sessions" "$HOME/.local/bin/tmux-sessions"
   link "$REPO_DIR/config/git/config.inc" "$HOME/.config/git/terminal-setup.inc"
-  run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/claude-tmux" "$REPO_DIR/config/bin/tmux-sessions"
+  run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/claude-tmux"
 }
 
 link_claude_hooks() {
