@@ -13,7 +13,7 @@ unzip -qo "$tmp/font.zip" -d "$tmp/font"
 
 case "$(uname -s)" in
   Darwin) dest="$HOME/Library/Fonts/$FONT_NAME" ;;
-  *)      dest="$HOME/.local/share/fonts/$FONT_NAME" ;;
+  *) dest="$HOME/.local/share/fonts/$FONT_NAME" ;;
 esac
 
 mkdir -p "$dest"

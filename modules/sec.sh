@@ -1,28 +1,43 @@
 #!/usr/bin/env bash
 
 install_trivy() {
-  have trivy && { skip "trivy"; return; }
+  have trivy && {
+    skip "trivy"
+    return
+  }
   run_sh 'curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin'
   ok "trivy"
 }
 
 install_anchore() {
   local tool=$1 repo=$2
-  have "$tool" && { skip "$tool"; return; }
+  have "$tool" && {
+    skip "$tool"
+    return
+  }
   run_sh "curl -fsSL https://raw.githubusercontent.com/anchore/${repo}/main/install.sh | sudo sh -s -- -b /usr/local/bin"
   ok "$tool"
 }
 
 install_gitleaks() {
-  have gitleaks && { skip "gitleaks"; return; }
+  have gitleaks && {
+    skip "gitleaks"
+    return
+  }
   local v a o tmp
   case "$(uname -m)" in
-    x86_64|amd64)  a=x64 ;;
-    aarch64|arm64) a=arm64 ;;
-    *) warn "gitleaks: unsupported arch"; return ;;
+    x86_64 | amd64) a=x64 ;;
+    aarch64 | arm64) a=arm64 ;;
+    *)
+      warn "gitleaks: unsupported arch"
+      return
+      ;;
   esac
   case "$(os_name)" in linux) o=linux ;; darwin) o=darwin ;; *) return ;; esac
-  v=$(latest_tag gitleaks/gitleaks) || { warn "gitleaks: release lookup failed"; return; }
+  v=$(latest_tag gitleaks/gitleaks) || {
+    warn "gitleaks: release lookup failed"
+    return
+  }
   tmp=$(mktmp)
   run_sh "curl -fsSL 'https://github.com/gitleaks/gitleaks/releases/download/v${v}/gitleaks_${v}_${o}_${a}.tar.gz' | tar xz -C '$tmp' gitleaks"
   install_bin "$tmp/gitleaks"
@@ -31,10 +46,20 @@ install_gitleaks() {
 }
 
 install_hadolint() {
-  have hadolint && { skip "hadolint"; return; }
+  have hadolint && {
+    skip "hadolint"
+    return
+  }
   local v a tmp
-  a=$(arch_uname); [ "$a" = unsupported ] && { warn "hadolint: unsupported arch"; return; }
-  v=$(latest_tag hadolint/hadolint) || { warn "hadolint: release lookup failed"; return; }
+  a=$(arch_uname)
+  [ "$a" = unsupported ] && {
+    warn "hadolint: unsupported arch"
+    return
+  }
+  v=$(latest_tag hadolint/hadolint) || {
+    warn "hadolint: release lookup failed"
+    return
+  }
   tmp=$(mktmp)
   run_sh "curl -fsSL -o '$tmp/hadolint' 'https://github.com/hadolint/hadolint/releases/download/v${v}/hadolint-$(uname -s)-${a}'"
   install_bin "$tmp/hadolint"
@@ -43,10 +68,20 @@ install_hadolint() {
 }
 
 install_cosign() {
-  have cosign && { skip "cosign"; return; }
+  have cosign && {
+    skip "cosign"
+    return
+  }
   local v a tmp
-  a=$(arch_go); [ "$a" = unsupported ] && { warn "cosign: unsupported arch"; return; }
-  v=$(latest_tag sigstore/cosign) || { warn "cosign: release lookup failed"; return; }
+  a=$(arch_go)
+  [ "$a" = unsupported ] && {
+    warn "cosign: unsupported arch"
+    return
+  }
+  v=$(latest_tag sigstore/cosign) || {
+    warn "cosign: release lookup failed"
+    return
+  }
   tmp=$(mktmp)
   run_sh "curl -fsSL -o '$tmp/cosign' 'https://github.com/sigstore/cosign/releases/download/v${v}/cosign-$(os_name)-${a}'"
   install_bin "$tmp/cosign"
@@ -56,8 +91,14 @@ install_cosign() {
 
 install_uv_tool() {
   local tool=$1 pkg=$2
-  have "$tool" && { skip "$tool"; return; }
-  have uv || { warn "$tool: needs uv (run the langs group first)"; return; }
+  have "$tool" && {
+    skip "$tool"
+    return
+  }
+  have uv || {
+    warn "$tool: needs uv (run the langs group first)"
+    return
+  }
   run uv tool install "$pkg"
   ok "$tool"
 }

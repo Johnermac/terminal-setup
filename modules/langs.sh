@@ -2,11 +2,21 @@
 
 install_go() {
   local want a tmp
-  a=$(arch_go); [ "$a" = unsupported ] && { warn "go: unsupported arch"; return; }
+  a=$(arch_go)
+  [ "$a" = unsupported ] && {
+    warn "go: unsupported arch"
+    return
+  }
   local raw
-  raw=$(fetch 'https://go.dev/VERSION?m=text') || { warn "go: version lookup failed"; return; }
+  raw=$(fetch 'https://go.dev/VERSION?m=text') || {
+    warn "go: version lookup failed"
+    return
+  }
   want=$(printf '%s\n' "$raw" | head -1)
-  [ -n "$want" ] || { warn "go: version lookup failed"; return; }
+  [ -n "$want" ] || {
+    warn "go: version lookup failed"
+    return
+  }
 
   if have go && [ "$(go version | awk '{print $3}')" = "$want" ]; then
     skip "$want"
@@ -24,19 +34,28 @@ install_go() {
 install_node() {
   local want a tmp
   case "$(uname -m)" in
-    x86_64|amd64)  a=x64 ;;
-    aarch64|arm64) a=arm64 ;;
-    *) warn "node: unsupported arch"; return ;;
+    x86_64 | amd64) a=x64 ;;
+    aarch64 | arm64) a=arm64 ;;
+    *)
+      warn "node: unsupported arch"
+      return
+      ;;
   esac
 
   local index
-  index=$(fetch https://nodejs.org/dist/index.json) || { warn "node: version lookup failed"; return; }
+  index=$(fetch https://nodejs.org/dist/index.json) || {
+    warn "node: version lookup failed"
+    return
+  }
   if have jq; then
     want=$(printf '%s' "$index" | jq -r '[.[] | select(.lts != false)][0].version')
   else
     want=$(printf '%s' "$index" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' | head -1)
   fi
-  [ -n "$want" ] && [ "$want" != null ] || { warn "node: version lookup failed"; return; }
+  [ -n "$want" ] && [ "$want" != null ] || {
+    warn "node: version lookup failed"
+    return
+  }
 
   if have node && [ "$(node --version)" = "$want" ]; then
     skip "node $want"

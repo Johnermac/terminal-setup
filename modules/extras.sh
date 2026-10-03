@@ -18,11 +18,17 @@ group_ruby() {
   ok "rbenv"
 
   export PATH="$root/bin:$PATH"
-  have rbenv || { warn "rbenv not on PATH"; return; }
+  have rbenv || {
+    warn "rbenv not on PATH"
+    return
+  }
 
   local latest
   latest=$(rbenv install -l 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tail -1)
-  [ -n "$latest" ] || { warn "could not resolve latest ruby"; return; }
+  [ -n "$latest" ] || {
+    warn "could not resolve latest ruby"
+    return
+  }
 
   if rbenv versions --bare 2>/dev/null | grep -qx "$latest"; then
     skip "ruby $latest"

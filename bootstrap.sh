@@ -6,13 +6,17 @@ REPO_DIR=${TERMINAL_SETUP_DIR:-$HOME/projects/terminal-setup}
 
 if ! command -v git >/dev/null 2>&1; then
   for pm in "apt-get install -y git" "pacman -S --noconfirm git" "dnf install -y git" \
-            "zypper --non-interactive install git" "apk add git"; do
+    "zypper --non-interactive install git" "apk add git"; do
+    # shellcheck disable=SC2086
     set -- $pm
     command -v "$1" >/dev/null 2>&1 || continue
     sudo "$@" && break
   done
 fi
-command -v git >/dev/null 2>&1 || { echo "git required" >&2; exit 1; }
+command -v git >/dev/null 2>&1 || {
+  echo "git required" >&2
+  exit 1
+}
 
 if [ -d "$REPO_DIR/.git" ]; then
   git -C "$REPO_DIR" pull --ff-only
