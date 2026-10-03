@@ -35,19 +35,24 @@ link_claude_hooks() {
   }
 
   local settings="$HOME/.claude/settings.json" tmp
-  if [ -f "$settings" ] && jq -e '[.hooks[]?[]?.hooks[]?.command] | any(test("claude-tmux"))' "$settings" >/dev/null; then
+  run mkdir -p "$HOME/.claude"
+  [ -f "$settings" ] || run sh -c "echo '{}' > '$settings'"
+  [ "$DRY_RUN" = 1 ] && return
+
+  tmp=$(mktemp)
+  jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" '
+    .hooks = ((.hooks // {}) | with_entries(.value |= map(select([.hooks[]?.command] | any(test("claude-tmux")) | not))) | with_entries(select(.value | length > 0)))
+    | reduce ($h[0] | to_entries[]) as $e (.; .hooks[$e.key] = ((.hooks[$e.key] // []) + $e.value))
+  ' "$settings" >"$tmp"
+
+  if jq -e --slurpfile a "$settings" '. == $a[0]' "$tmp" >/dev/null; then
+    rm -f "$tmp"
     skip "claude hooks"
     return
   fi
 
-  run mkdir -p "$HOME/.claude"
-  [ -f "$settings" ] || run sh -c "echo '{}' > '$settings'"
-  [ "$DRY_RUN" = 1 ] && return
   cp "$settings" "$settings.bak.$BACKUP_STAMP"
-  tmp=$(mktemp)
-  jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" \
-    'reduce ($h[0] | to_entries[]) as $e (.; .hooks[$e.key] = ((.hooks[$e.key] // []) + $e.value))' \
-    "$settings" >"$tmp" && mv "$tmp" "$settings"
+  mv "$tmp" "$settings"
   ok "claude hooks -> $settings"
 }
 

@@ -8,6 +8,7 @@ pre-commit:
       glob: "*.sh"
       run: shfmt -d -i 2 -ci {staged_files}
     trailing-whitespace:
+      exclude: "patches/*"
       run: |
         if grep -InE ' +$' {staged_files}; then
           echo "trailing whitespace above" >&2

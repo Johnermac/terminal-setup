@@ -15,6 +15,16 @@ alive() { tmux display -p -t "$1" '#{pane_id}' >/dev/null 2>&1; }
 
 label() { tmux display -p -t "$1" '#S:#I #W'; }
 
+state() {
+  if [ -n "$2" ]; then
+    tmux set -p -t "$1" @claude "$2"
+  else
+    tmux set -pu -t "$1" @claude
+  fi
+} 2>/dev/null
+
+unpend() { case " $(get) " in *" $1 "*) put "$(drop "$1")" ;; esac; }
+
 go() {
   tmux switch-client -t "$1" \; select-window -t "$1" \; select-pane -t "$1"
   put "$(drop "$1")"
@@ -23,19 +33,36 @@ go() {
 case "$1" in
   notify)
     [ -n "$TMUX_PANE" ] || exit 0
-    command -v tmux >/dev/null || exit 0
-    event=$(jq -r '.hook_event_name // empty' 2>/dev/null)
     p=$TMUX_PANE
+    event=$(jq -r '.hook_event_name // empty' 2>/dev/null)
     viewing=$(tmux display -p -t "$p" '#{&&:#{session_attached},#{&&:#{window_active},#{pane_active}}}')
+    if [ "$event" = Notification ]; then
+      state "$p" wait
+      mark="󰚩?"
+    elif [ "$viewing" = 1 ]; then
+      state "$p" ""
+    else
+      state "$p" "done"
+      mark="󰚩"
+    fi
     [ "$viewing" = 1 ] && exit 0
     put "$p $(drop "$p")"
-    mark="󰚩"
-    [ "$event" = Notification ] && mark="󰚩?"
     tmux display -d 2500 "$mark $(tmux display -p -t "$p" '#S:#I')"
+    ;;
+  busy)
+    [ -n "$TMUX_PANE" ] || exit 0
+    state "$TMUX_PANE" busy
+    unpend "$TMUX_PANE"
+    ;;
+  end)
+    [ -n "$TMUX_PANE" ] || exit 0
+    state "$TMUX_PANE" ""
+    unpend "$TMUX_PANE"
     ;;
   seen)
     [ -n "$2" ] || exit 0
-    case " $(get) " in *" $2 "*) put "$(drop "$2")" ;; esac
+    unpend "$2"
+    [ "$(tmux show -pqv -t "$2" @claude)" = "done" ] && state "$2" ""
     ;;
   jump)
     for p in $(get); do

@@ -11,7 +11,7 @@ export REPO_DIR
 for m in "$REPO_DIR"/modules/*.sh; do . "$m"; done
 
 DEFAULT_GROUPS="base shell cli langs cloud sec config"
-OPTIONAL_GROUPS="pentest wordlists ruby java gcloud"
+OPTIONAL_GROUPS="pentest wordlists ruby java gcloud tmux-boxes"
 SKIP_CHSH=0
 GROUP_LIST=$DEFAULT_GROUPS
 WITH=""
@@ -51,19 +51,38 @@ wordlists SecLists (~1 GB)
 ruby      rbenv, ruby-build, latest stable ruby
 java      jdk, maven
 gcloud    google cloud sdk
+tmux-boxes patched tmux 3.7b with rounded per-pane border boxes
 LIST
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dry-run)   DRY_RUN=1 ;;
-    --groups)    GROUP_LIST=$(echo "$2" | tr ',' ' '); shift ;;
-    --with)      WITH=$(echo "$2" | tr ',' ' '); shift ;;
-    --without)   WITHOUT=$(echo "$2" | tr ',' ' '); shift ;;
+    --dry-run) DRY_RUN=1 ;;
+    --groups)
+      GROUP_LIST=$(echo "$2" | tr ',' ' ')
+      shift
+      ;;
+    --with)
+      WITH=$(echo "$2" | tr ',' ' ')
+      shift
+      ;;
+    --without)
+      WITHOUT=$(echo "$2" | tr ',' ' ')
+      shift
+      ;;
     --skip-chsh) SKIP_CHSH=1 ;;
-    --list)      list_groups; exit 0 ;;
-    -h|--help)   usage; exit 0 ;;
-    *)           usage >&2; die "unknown option: $1" ;;
+    --list)
+      list_groups
+      exit 0
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      die "unknown option: $1"
+      ;;
   esac
   shift
 done
@@ -81,12 +100,12 @@ resolve_groups() {
 
 verify() {
   step "verify"
-  local missing="" cmd
+  local absent="" cmd
   for cmd in fish tmux starship zoxide fzf fd bat git rg jq; do
-    have "$cmd" || missing="$missing $cmd"
+    have "$cmd" || absent="$absent $cmd"
   done
-  if [ -n "$missing" ]; then
-    warn "missing:$missing"
+  if [ -n "$absent" ]; then
+    warn "missing:$absent"
   else
     ok "core tools present"
   fi

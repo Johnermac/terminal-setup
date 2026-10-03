@@ -38,6 +38,7 @@ Opt-in with `--with`:
 | `ruby` | rbenv, ruby-build, latest stable ruby (compiles from source) |
 | `java` | jdk, maven |
 | `gcloud` | google cloud sdk |
+| `tmux-boxes` | tmux 3.7b patched with rounded per-pane border boxes, installed to `~/.local/bin/tmux` |
 
 ```sh
 ./install.sh --dry-run
@@ -58,6 +59,7 @@ lib/            logging, package manager abstraction, package name map
 modules/        one file per group
 config/         dotfiles, symlinked into $HOME
 scripts/        font installer
+patches/        source patches applied by opt-in groups
 ```
 
 | Repo | Home |
@@ -118,11 +120,22 @@ tmux, prefix `C-a`
 | `prefix J` | pick from pending Claude panes (`ctrl-x` clears) |
 | `prefix G` / `prefix D` | lazygit / lazydocker popup |
 | `prefix /` | scrollback search |
+| `prefix B` / `prefix N` | toggle border boxes / rounded vs heavy lines (`tmux-boxes` only) |
 | `prefix r` | reload config |
 
 ## Claude notifications
 
-When Claude finishes or waits for input in a pane you are not looking at, tmux flashes `󰚩 session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
+When Claude finishes or waits for a permission answer in a pane you are not looking at, tmux flashes `󰚩 session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
+
+Each pane's border title shows Claude's state: `●` working, `?` waiting for permission, `✓` finished and not yet visited. Exiting Claude clears it.
+
+## Border boxes
+
+`--with tmux-boxes` builds tmux 3.7b with `patches/tmux-3.7b-border-boxes.patch`. Every pane gets its own rounded box, at the cost of 2 rows and 2 columns per pane. Boxes turn off in windows with a single pane and while a pane is zoomed. Clicking a box focuses its pane, dragging a box edge or the gap resizes.
+
+The same block turns on 3.7 features stock 3.2a lacks: extended keys (Shift+Enter reaches Claude Code), OSC 8 hyperlinks, synchronized output, rounded popups.
+
+The config enables it only when the running tmux has the `pane-border-boxes` option, so stock tmux ignores it. Kill the running server after installing, since a new client should not talk to an old server.
 
 ## Uninstall
 
@@ -131,6 +144,7 @@ find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-t
   -maxdepth 2 -lname "$PWD/*" -delete
 git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"
+rm -f ~/.local/bin/tmux ~/.local/share/man/man1/tmux.1 ~/.local/share/terminal-setup/tmux-boxes.stamp
 ```
 
 Originals are in the `.bak.<timestamp>` files.

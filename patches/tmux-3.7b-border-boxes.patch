@@ -1,0 +1,316 @@
+diff --git a/layout.c b/layout.c
+index 70226d6..c6f7ca0 100644
+--- a/layout.c
++++ b/layout.c
+@@ -359,10 +359,11 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
+ {
+ 	struct window_pane	*wp;
+ 	struct layout_cell	*lc;
+-	int			 status, sb_w, sb_pad;
++	int			 status, boxes, sb_w, sb_pad;
+ 	u_int			 sx, sy;
+ 
+ 	status = options_get_number(w->options, "pane-border-status");
++	boxes = options_get_number(w->options, "pane-border-boxes");
+ 
+ 	TAILQ_FOREACH(wp, &w->panes, entry) {
+ 		if ((lc = wp->layout_cell) == NULL || wp == skip)
+@@ -373,7 +374,20 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
+ 		sx = lc->sx;
+ 		sy = lc->sy;
+ 
+-		if (!window_pane_is_floating(wp) &&
++		/*
++		 * With border boxes, each pane draws a complete box on the
++		 * outermost cells of its own layout cell, so the pane itself
++		 * is inset by one cell on every side. The cell between two
++		 * neighbouring panes is then left empty as a gap. Any pane
++		 * border status line is drawn on the box itself and needs no
++		 * further space.
++		 */
++		if (boxes && !window_pane_is_floating(wp)) {
++			wp->xoff++;
++			wp->yoff++;
++			sx = (sx < PANE_MINIMUM + 2) ? PANE_MINIMUM : sx - 2;
++			sy = (sy < PANE_MINIMUM + 2) ? PANE_MINIMUM : sy - 2;
++		} else if (!window_pane_is_floating(wp) &&
+ 		    layout_add_horizontal_border(w, lc, status)) {
+ 			if (status == PANE_STATUS_TOP)
+ 				wp->yoff++;
+diff --git a/options-table.c b/options-table.c
+index d743cdf..cd45e9a 100644
+--- a/options-table.c
++++ b/options-table.c
+@@ -76,7 +76,8 @@ static const char *options_table_pane_border_indicators_list[] = {
+ 	"off", "colour", "arrows", "both", NULL
+ };
+ static const char *options_table_pane_border_lines_list[] = {
+-	"single", "double", "heavy", "simple", "number", "spaces", NULL
++	"single", "double", "heavy", "simple", "number", "spaces", "rounded",
++	NULL
+ };
+ static const char *options_table_popup_border_lines_list[] = {
+ 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
+@@ -1354,6 +1355,15 @@ const struct options_table_entry options_table[] = {
+ 		  "displaying arrow markers."
+ 	},
+ 
++	{ .name = "pane-border-boxes",
++	  .type = OPTIONS_TABLE_FLAG,
++	  .scope = OPTIONS_TABLE_WINDOW,
++	  .default_num = 0,
++	  .text = "Draw a complete border box around each pane instead of "
++		  "sharing border lines between panes. Each pane loses one "
++		  "row and column of space on every side."
++	},
++
+ 	{ .name = "pane-border-lines",
+ 	  .type = OPTIONS_TABLE_CHOICE,
+ 	  .scope = OPTIONS_TABLE_WINDOW,
+diff --git a/options.c b/options.c
+index e38056c..706805b 100644
+--- a/options.c
++++ b/options.c
+@@ -1235,6 +1235,7 @@ options_push_changes(const char *name)
+ 			colour_palette_from_option(&wp->palette, wp->options);
+ 	}
+ 	if (strcmp(name, "pane-border-status") == 0 ||
++	    strcmp(name, "pane-border-boxes") == 0 ||
+ 	    strcmp(name, "pane-scrollbars") == 0 ||
+ 	    strcmp(name, "pane-scrollbars-position") == 0) {
+ 		RB_FOREACH(w, windows, &windows) {
+diff --git a/screen-redraw.c b/screen-redraw.c
+index e1d8c62..7dbf656 100644
+--- a/screen-redraw.c
++++ b/screen-redraw.c
+@@ -83,6 +83,10 @@ screen_redraw_border_set(struct window *w, struct window_pane *wp,
+ 		gc->attr &= ~GRID_ATTR_CHARSET;
+ 		utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
+ 		break;
++	case PANE_LINES_ROUNDED:
++		gc->attr &= ~GRID_ATTR_CHARSET;
++		utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
++		break;
+ 	case PANE_LINES_SIMPLE:
+ 		gc->attr &= ~GRID_ATTR_CHARSET;
+ 		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
+@@ -424,6 +428,72 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
+ 	return (CELL_OUTSIDE);
+ }
+ 
++/*
++ * Work out the type of cell when each pane draws its own complete border box.
++ * The box is drawn on the ring of cells immediately around the pane, which is
++ * the outermost ring of the pane's layout cell, so no two panes share a border
++ * cell and every pane has four corners. Cells belonging to no pane are the
++ * gaps left between neighbouring boxes.
++ */
++static int
++screen_redraw_box_cell(struct screen_redraw_ctx *ctx, int px, int py,
++    struct window_pane **wpp)
++{
++	struct client		*c = ctx->c;
++	struct window		*w = c->session->curw->window;
++	struct window_pane	*wp;
++	int			 left, right, top, bottom, sb_w;
++
++	*wpp = NULL;
++
++	TAILQ_FOREACH(wp, &w->z_index, zentry) {
++		if (!window_pane_visible(wp))
++			continue;
++
++		sb_w = 0;
++		if (window_pane_show_scrollbar(wp)) {
++			sb_w = wp->scrollbar_style.width +
++			    wp->scrollbar_style.pad;
++		}
++
++		left = wp->xoff - 1;
++		right = wp->xoff + (int)wp->sx;
++		top = wp->yoff - 1;
++		bottom = wp->yoff + (int)wp->sy;
++		if (w->sb != PANE_SCROLLBARS_OFF &&
++		    w->sb_pos == PANE_SCROLLBARS_LEFT)
++			left -= sb_w;
++		else
++			right += sb_w;
++
++		if (px < left || px > right || py < top || py > bottom)
++			continue;
++		*wpp = wp;
++
++		/* Inside the pane, or in its scrollbar. */
++		if (px > left && px < right && py > top && py < bottom)
++			return (CELL_INSIDE);
++
++		if (py == top) {
++			if (px == left)
++				return (CELL_TOPLEFT);
++			if (px == right)
++				return (CELL_TOPRIGHT);
++			return (CELL_LEFTRIGHT);
++		}
++		if (py == bottom) {
++			if (px == left)
++				return (CELL_BOTTOMLEFT);
++			if (px == right)
++				return (CELL_BOTTOMRIGHT);
++			return (CELL_LEFTRIGHT);
++		}
++		return (CELL_TOPBOTTOM);
++	}
++
++	return (CELL_OUTSIDE);
++}
++
+ /* Check if cell inside a pane. */
+ static int
+ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
+@@ -444,6 +514,10 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
+ 	if (px > sx || py > sy)
+ 		return (CELL_OUTSIDE);
+ 
++	/* Each pane has its own border box. */
++	if (ctx->pane_boxes)
++		return (screen_redraw_box_cell(ctx, px, py, wpp));
++
+ 	/* Find pane highest in z-index at this point. */
+ 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+ 		if (window_pane_is_floating(wp) && (px >= sx || py >= sy)) {
+@@ -789,6 +863,7 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
+ 	ctx->statuslines = lines;
+ 
+ 	ctx->pane_status = options_get_number(wo, "pane-border-status");
++	ctx->pane_boxes = options_get_number(wo, "pane-border-boxes");
+ 	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
+ 
+ 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
+@@ -879,7 +954,8 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
+ 	int			*flag;
+ 
+ 	if ((window_pane_is_floating(wp) && wp == active) ||
+-	    (!window_pane_is_floating(wp) &&
++	    (ctx->pane_boxes && wp == active) ||
++	    (!window_pane_is_floating(wp) && !ctx->pane_boxes &&
+ 	    screen_redraw_check_is(ctx, x, y, active))) {
+ 		flag = &wp->active_border_gc_set;
+ 		gc = &wp->active_border_gc;
+@@ -1024,6 +1100,13 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
+ 	}
+ 	screen_redraw_border_set(w, wp, ctx->pane_lines, cell_type, &gc);
+ 
++	/* The gaps between border boxes are left empty. */
++	if (ctx->pane_boxes && cell_type == CELL_OUTSIDE &&
++	    w->fill_character == NULL) {
++		gc.attr &= ~GRID_ATTR_CHARSET;
++		utf8_set(&gc.data, ' ');
++	}
++
+ 	if (cell_type == CELL_TOPBOTTOM &&
+ 	    (c->flags & CLIENT_UTF8) &&
+ 	    tty_term_has(tty->term, TTYC_BIDI))
+diff --git a/server-client.c b/server-client.c
+index 52886f0..49f98f2 100644
+--- a/server-client.c
++++ b/server-client.c
+@@ -618,6 +618,20 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
+ 		sb_pad = 0;
+ 	}
+ 
++	/* With border boxes, anything outside the pane is its box or gap. */
++	if (options_get_number(w->options, "pane-border-boxes") &&
++	    !window_pane_is_floating(wp)) {
++		bdr_left = wp->xoff - 1;
++		bdr_right = wp->xoff + wp->sx;
++		if (w->sb_pos == PANE_SCROLLBARS_LEFT)
++			bdr_left -= sb_pad + sb_w;
++		else
++			bdr_right += sb_pad + sb_w;
++		if (px <= bdr_left || px >= bdr_right ||
++		    py < wp->yoff || py >= wp->yoff + (int)wp->sy)
++			return (KEYC_MOUSE_LOCATION_BORDER);
++	}
++
+ 	if (pane_status == PANE_STATUS_TOP)
+ 		pane_status_line = wp->yoff - 1;
+ 	else if (pane_status == PANE_STATUS_BOTTOM)
+diff --git a/tmux.h b/tmux.h
+index 5dc86b2..ef26ff3 100644
+--- a/tmux.h
++++ b/tmux.h
+@@ -1086,7 +1086,8 @@ enum pane_lines {
+ 	PANE_LINES_HEAVY,
+ 	PANE_LINES_SIMPLE,
+ 	PANE_LINES_NUMBER,
+-	PANE_LINES_SPACES
++	PANE_LINES_SPACES,
++	PANE_LINES_ROUNDED
+ };
+ 
+ /* Pane border indicator option. */
+@@ -1108,6 +1109,7 @@ struct screen_redraw_ctx {
+ 	int		 statustop;
+ 
+ 	int		 pane_status;
++	int		 pane_boxes;
+ 	enum pane_lines	 pane_lines;
+ 
+ 	int		 pane_scrollbars;
+diff --git a/tty-acs.c b/tty-acs.c
+index 3dab31b..501b8e1 100644
+--- a/tty-acs.c
++++ b/tty-acs.c
+@@ -153,11 +153,11 @@ static const struct utf8_data tty_acs_rounded_borders_list[] = {
+ 	{ "\342\225\256", 0, 3, 1 }, /* U+256E */
+ 	{ "\342\225\260", 0, 3, 1 }, /* U+2570 */
+ 	{ "\342\225\257", 0, 3, 1 }, /* U+256F */
+-	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
+-	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
+-	{ "\342\224\234", 0, 3, 1 }, /* U+2524 */
+-	{ "\342\224\244", 0, 3, 1 }, /* U+251C */
+-	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
++	{ "\342\224\254", 0, 3, 1 }, /* U+252C */
++	{ "\342\224\264", 0, 3, 1 }, /* U+2534 */
++	{ "\342\224\234", 0, 3, 1 }, /* U+251C */
++	{ "\342\224\244", 0, 3, 1 }, /* U+2524 */
++	{ "\342\224\274", 0, 3, 1 }, /* U+253C */
+ 	{ "\302\267",	  0, 2, 1 }  /* U+00B7 */
+ };
+ 
+diff --git a/window.c b/window.c
+index 00ed1a0..7f25a98 100644
+--- a/window.c
++++ b/window.c
+@@ -623,10 +623,11 @@ struct window_pane *
+ window_get_active_at(struct window *w, u_int x, u_int y)
+ {
+ 	struct window_pane	*wp;
+-	int			 pane_status, xoff, yoff;
++	int			 pane_status, boxes, xoff, yoff;
+ 	u_int			 sx, sy;
+ 
+ 	pane_status = options_get_number(w->options, "pane-border-status");
++	boxes = options_get_number(w->options, "pane-border-boxes");
+ 
+ 	if (pane_status == PANE_STATUS_TOP) {
+ 		/*
+@@ -649,7 +650,17 @@ window_get_active_at(struct window *w, u_int x, u_int y)
+ 		if (!window_pane_visible(wp))
+ 			continue;
+ 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+-		if (!window_pane_is_floating(wp)) {
++		if (boxes && !window_pane_is_floating(wp)) {
++			/*
++			 * Tiled with border boxes - the whole box, plus the
++			 * gap to its right and below, which is the layout
++			 * border used for resizing.
++			 */
++			if ((int)x < xoff - 1 || x > xoff + sx + 1)
++				continue;
++			if ((int)y < yoff - 1 || y > yoff + sy + 1)
++				continue;
++		} else if (!window_pane_is_floating(wp)) {
+ 			/*
+ 			 * Tiled - to and including the right border, excluding
+ 			 * the bottom border.
