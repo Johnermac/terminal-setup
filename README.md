@@ -67,6 +67,8 @@ scripts/        font installer
 | `config/tmux/tmux.conf` | `~/.tmux.conf` |
 | `config/git/config.inc` | `~/.config/git/terminal-setup.inc`, added to `include.path` |
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
+| `config/bin/claude-tmux` | `~/.local/bin/claude-tmux` |
+| `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
 
 Symlinks, so `git pull` updates the live setup. Edit in the repo, commit, push.
 
@@ -112,9 +114,15 @@ tmux, prefix `C-a`
 | `prefix S` / `prefix s` | sync panes on / off |
 | `prefix g` | scratch popup |
 | `prefix C-j` | session switcher (`ctrl-x` kills) |
+| `prefix j` | jump to latest Claude pane that finished |
+| `prefix J` | pick from pending Claude panes (`ctrl-x` clears) |
 | `prefix G` / `prefix D` | lazygit / lazydocker popup |
 | `prefix /` | scrollback search |
 | `prefix r` | reload config |
+
+## Claude notifications
+
+When Claude finishes or waits for input in a pane you are not looking at, tmux flashes `󰚩 session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
 
 ## Uninstall
 

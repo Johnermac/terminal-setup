@@ -1,0 +1,62 @@
+#!/bin/sh
+
+get() { tmux show -gqv @claude_pending; }
+
+put() {
+  list=$(echo "$1" | xargs)
+  tmux set -g @claude_pending "$list"
+  tmux set -g @claude_count "$(echo "$list" | wc -w | tr -d ' ')"
+  tmux refresh-client -S 2>/dev/null
+}
+
+drop() { get | tr ' ' '\n' | grep -vxF "$1" | grep -v '^$' | tr '\n' ' '; }
+
+alive() { tmux display -p -t "$1" '#{pane_id}' >/dev/null 2>&1; }
+
+label() { tmux display -p -t "$1" '#S:#I #W'; }
+
+go() {
+  tmux switch-client -t "$1" \; select-window -t "$1" \; select-pane -t "$1"
+  put "$(drop "$1")"
+}
+
+case "$1" in
+  notify)
+    [ -n "$TMUX_PANE" ] || exit 0
+    command -v tmux >/dev/null || exit 0
+    event=$(jq -r '.hook_event_name // empty' 2>/dev/null)
+    p=$TMUX_PANE
+    viewing=$(tmux display -p -t "$p" '#{&&:#{session_attached},#{&&:#{window_active},#{pane_active}}}')
+    [ "$viewing" = 1 ] && exit 0
+    put "$p $(drop "$p")"
+    mark="󰚩"
+    [ "$event" = Notification ] && mark="󰚩?"
+    tmux display -d 2500 "$mark $(tmux display -p -t "$p" '#S:#I')"
+    ;;
+  seen)
+    [ -n "$2" ] || exit 0
+    case " $(get) " in *" $2 "*) put "$(drop "$2")" ;; esac
+    ;;
+  jump)
+    for p in $(get); do
+      alive "$p" && { go "$p"; exit 0; }
+      put "$(drop "$p")"
+    done
+    tmux display "no pending Claude sessions"
+    ;;
+  pick)
+    list=""
+    for p in $(get); do
+      if alive "$p"; then list="$list$p	$(label "$p")
+"; else put "$(drop "$p")"; fi
+    done
+    [ -n "$list" ] || { tmux display "no pending Claude sessions"; exit 0; }
+    sel=$(printf '%s' "$list" | fzf --reverse --with-nth=2.. --delimiter='	' \
+      --header='enter: jump / ctrl-x: clear all' --bind 'ctrl-x:execute-silent('"$0"' clear)+abort') || exit 0
+    go "$(echo "$sel" | cut -f1)"
+    ;;
+  clear)
+    put ""
+    ;;
+esac
+exit 0

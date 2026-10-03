@@ -2,14 +2,14 @@
 
 link_dotfiles() {
   if [ -f "$HOME/.config/fish/local.fish" ]; then
-    skip "~/.config/fish/local.fish"
+    skip "$HOME/.config/fish/local.fish"
   else
     run mkdir -p "$HOME/.config/fish"
     run touch "$HOME/.config/fish/local.fish"
     ok "created ~/.config/fish/local.fish"
   fi
 
-  link "$REPO_DIR/config/fish/config.fish"  "$HOME/.config/fish/config.fish"
+  link "$REPO_DIR/config/fish/config.fish" "$HOME/.config/fish/config.fish"
   link "$REPO_DIR/config/fish/fish_plugins" "$HOME/.config/fish/fish_plugins"
 
   local f
@@ -20,11 +20,35 @@ link_dotfiles() {
     link "$f" "$HOME/.config/fish/functions/$(basename "$f")"
   done
 
-  link "$REPO_DIR/config/starship.toml"      "$HOME/.config/starship.toml"
-  link "$REPO_DIR/config/tmux/tmux.conf"     "$HOME/.tmux.conf"
+  link "$REPO_DIR/config/starship.toml" "$HOME/.config/starship.toml"
+  link "$REPO_DIR/config/tmux/tmux.conf" "$HOME/.tmux.conf"
   link "$REPO_DIR/config/bin/tmux-git-title" "$HOME/.local/bin/tmux-git-title"
-  link "$REPO_DIR/config/git/config.inc"     "$HOME/.config/git/terminal-setup.inc"
-  run chmod +x "$REPO_DIR/config/bin/tmux-git-title"
+  link "$REPO_DIR/config/bin/claude-tmux" "$HOME/.local/bin/claude-tmux"
+  link "$REPO_DIR/config/git/config.inc" "$HOME/.config/git/terminal-setup.inc"
+  run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/claude-tmux"
+}
+
+link_claude_hooks() {
+  have jq || {
+    warn "jq not installed"
+    return
+  }
+
+  local settings="$HOME/.claude/settings.json" tmp
+  if [ -f "$settings" ] && jq -e '[.hooks[]?[]?.hooks[]?.command] | any(test("claude-tmux"))' "$settings" >/dev/null; then
+    skip "claude hooks"
+    return
+  fi
+
+  run mkdir -p "$HOME/.claude"
+  [ -f "$settings" ] || run sh -c "echo '{}' > '$settings'"
+  [ "$DRY_RUN" = 1 ] && return
+  cp "$settings" "$settings.bak.$BACKUP_STAMP"
+  tmp=$(mktemp)
+  jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" \
+    'reduce ($h[0] | to_entries[]) as $e (.; .hooks[$e.key] = ((.hooks[$e.key] // []) + $e.value))' \
+    "$settings" >"$tmp" && mv "$tmp" "$settings"
+  ok "claude hooks -> $settings"
 }
 
 link_gitconfig() {
@@ -38,7 +62,10 @@ link_gitconfig() {
 }
 
 install_fisher() {
-  have fish || { warn "fish not installed"; return; }
+  have fish || {
+    warn "fish not installed"
+    return
+  }
 
   if [ -f "$HOME/.config/fish/functions/fisher.fish" ]; then
     skip "fisher"
@@ -52,7 +79,10 @@ install_fisher() {
 }
 
 install_tpm() {
-  have tmux || { warn "tmux not installed"; return; }
+  have tmux || {
+    warn "tmux not installed"
+    return
+  }
 
   if [ -d "$HOME/.tmux/plugins/tpm" ]; then
     skip "tpm"
@@ -68,17 +98,23 @@ install_tpm() {
 }
 
 set_default_shell() {
-  [ "$SKIP_CHSH" = 1 ] && { skip "--skip-chsh"; return; }
+  [ "$SKIP_CHSH" = 1 ] && {
+    skip "--skip-chsh"
+    return
+  }
 
   local fish_path
-  fish_path=$(command -v fish) || { warn "fish not installed"; return; }
+  fish_path=$(command -v fish) || {
+    warn "fish not installed"
+    return
+  }
 
   if [ "${SHELL:-}" = "$fish_path" ]; then
     skip "login shell is fish"
     return
   fi
 
-  grep -qxF "$fish_path" /etc/shells 2>/dev/null || \
+  grep -qxF "$fish_path" /etc/shells 2>/dev/null ||
     sudo_run sh -c "echo '$fish_path' >> /etc/shells"
 
   if run chsh -s "$fish_path"; then
@@ -92,6 +128,7 @@ group_config() {
   step "dotfiles"
   link_dotfiles
   link_gitconfig
+  link_claude_hooks
   step "fish plugins"
   install_fisher
   step "tmux plugins"

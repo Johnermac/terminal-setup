@@ -1,0 +1,5 @@
+{
+  "Stop": [{ "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-tmux notify", "timeout": 5 }] }],
+  "Notification": [{ "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-tmux notify", "timeout": 5 }] }],
+  "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-tmux seen \"$TMUX_PANE\"", "timeout": 5 }] }]
+}
