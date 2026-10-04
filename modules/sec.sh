@@ -48,7 +48,7 @@ group_sec() {
 
   step "secrets and lint"
   release_bin gitleaks gitleaks/gitleaks x64/arm64 'v{v}/gitleaks_{v}_{os}_{arch}.tar.gz' gitleaks
-  release_bin hadolint hadolint/hadolint x86_64/aarch64 'v{v}/hadolint-{Os}-{arch}'
+  release_bin hadolint hadolint/hadolint x86_64/arm64 'v{v}/hadolint-{os}-{arch}'
   release_bin cosign sigstore/cosign amd64/arm64 'v{v}/cosign-{os}-{arch}'
 
   step "python security tooling"
