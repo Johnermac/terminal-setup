@@ -156,7 +156,19 @@ set -gx AWS_PROD_PROFILES mgmt audit-mgmt
 
 A command that is itself a variable (`$x ...`) also asks in prod context. Force pushes, including `+refspec`, always ask. Any mention of `aws-vault` is denied: it stays a human-only breakglass path.
 
-It reads the command text, so scripts and SDK code that call AWS internally get through. IAM is the real boundary: keep the default profile read-only.
+It reads the command text, so scripts and SDK code that call AWS internally get through. IAM is the real boundary: pin Claude to a read-only profile in `~/.claude/settings.json`, and blank the key variables so credentials exported by `assume` in the launching shell do not leak in:
+
+```json
+"env": {
+  "AWS_PROFILE": "audit-readonly",
+  "AWS_DEFAULT_PROFILE": "",
+  "AWS_ACCESS_KEY_ID": "",
+  "AWS_SECRET_ACCESS_KEY": "",
+  "AWS_SESSION_TOKEN": ""
+}
+```
+
+Writes then need an explicit `--profile`, which the guard sees.
 
 Claude Code may start outside fish, so set the list in `~/.claude/settings.json` too:
 
