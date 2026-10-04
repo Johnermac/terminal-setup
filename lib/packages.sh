@@ -79,9 +79,8 @@ pkg_names() {
     ca-certificates)
       case $PM in brew) echo ;; *) echo ca-certificates ;; esac
       ;;
-    less | git | curl | wget | unzip | tar | jq | tree | htop | vim | cmake | ripgrep | bat | fish | tmux | fzf | \
-      nmap | tcpdump | whois | socat | openssl | maven | direnv | sqlmap | gnupg)
-      echo "$1"
+    delta)
+      case $PM in brew) echo git-delta ;; *) echo delta ;; esac
       ;;
     *)
       echo "$1"

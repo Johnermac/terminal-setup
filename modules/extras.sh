@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+group_info ruby "rbenv, ruby-build, latest stable ruby"
+group_info java "jdk, maven"
+group_info gcloud "google cloud sdk"
+
 group_ruby() {
   step "rbenv"
   local root="$HOME/.rbenv"

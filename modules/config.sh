@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+group_info config "dotfile symlinks, fisher, tpm, default shell"
+
 link_dotfiles() {
   if [ -f "$HOME/.config/fish/local.fish" ]; then
     skip "$HOME/.config/fish/local.fish"

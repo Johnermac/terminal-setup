@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+group_info cloud "docker kubectl helm k9s terraform aws granted"
+
 install_docker() {
   if have docker; then
     skip "$(docker --version 2>/dev/null)"
@@ -60,32 +62,6 @@ install_helm() {
   ok "helm"
 }
 
-install_k9s() {
-  have k9s && {
-    skip "k9s"
-    return
-  }
-  local v a o tmp
-  case "$(uname -m)" in
-    x86_64 | amd64) a=amd64 ;;
-    aarch64 | arm64) a=arm64 ;;
-    *)
-      warn "k9s: unsupported arch"
-      return
-      ;;
-  esac
-  case "$(os_name)" in linux) o=Linux ;; darwin) o=Darwin ;; *) return ;; esac
-  v=$(latest_tag derailed/k9s) || {
-    warn "k9s: release lookup failed"
-    return
-  }
-  tmp=$(mktmp)
-  run_sh "curl -fsSL 'https://github.com/derailed/k9s/releases/download/v${v}/k9s_${o}_${a}.tar.gz' | tar xz -C '$tmp' k9s"
-  install_bin "$tmp/k9s"
-  run rm -rf "$tmp"
-  ok "k9s $v"
-}
-
 install_terraform() {
   have terraform && {
     skip "terraform"
@@ -111,14 +87,11 @@ install_terraform() {
 }
 
 install_awscli() {
+  brew_pkg awscli && return
   have aws && {
     skip "aws"
     return
   }
-  if [ "$PM" = brew ]; then
-    ensure_packages awscli
-    return
-  fi
   local a tmp
   a=$(arch_uname)
   [ "$a" = unsupported ] && {
@@ -133,41 +106,15 @@ install_awscli() {
   ok "aws"
 }
 
-install_granted() {
-  have granted && {
-    skip "granted"
-    return
-  }
-  if [ "$PM" = brew ]; then
-    ensure_packages granted
-    return
-  fi
-  local v a
-  case "$(uname -m)" in
-    x86_64 | amd64) a=x86_64 ;;
-    aarch64 | arm64) a=arm64 ;;
-    *)
-      warn "granted: unsupported arch"
-      return
-      ;;
-  esac
-  v=$(latest_tag fwdcloudsec/granted) || {
-    warn "granted: release lookup failed"
-    return
-  }
-  install_tar_bins "https://github.com/fwdcloudsec/granted/releases/download/v${v}/granted_${v}_linux_${a}.tar.gz" granted assumego assume assume.fish
-  ok "granted $v"
-}
-
 group_cloud() {
   step "docker"
   install_docker
   step "kubernetes"
   install_kubectl
   install_helm
-  install_k9s
+  release_bin k9s derailed/k9s amd64/arm64 'v{v}/k9s_{Os}_{arch}.tar.gz' k9s
   step "infrastructure"
   install_terraform
   install_awscli
-  install_granted
+  release_bin granted fwdcloudsec/granted x86_64/arm64 'v{v}/granted_{v}_linux_{arch}.tar.gz' granted assumego assume assume.fish
 }

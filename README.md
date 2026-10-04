@@ -82,7 +82,14 @@ Host-specific lines go in `~/.config/fish/local.fish`. Real file, untracked, sou
 ## Adding a tool
 
 Packaged everywhere: add it to an `ensure_packages` call, and to `lib/packages.sh` if the name differs per distro.
-Binary release: add an `install_<tool>` function in the module, guarded by `have <tool> && { skip; return; }`.
+GitHub release: one `release_bin` line in the group function:
+
+```bash
+release_bin eza eza-community/eza x86_64/aarch64 'v{v}/eza_{arch}-unknown-linux-gnu.tar.gz' eza
+```
+
+Arguments: binary, repo, the release's names for x86_64/arm64, the asset path, then the binary's path inside the archive (omit for a bare binary). Placeholders: `{v}` version, `{arch}`, `{os}` (`linux`), `{Os}` (`Linux`). On brew it installs the formula of the same name; map a different formula name in `lib/packages.sh`. `--check-runs` first reinstalls a binary that is present but fails to start.
+Then add the tool to the module's `group_info` line, which feeds `--list`, and to the table above.
 Fish plugin: one line in `config/fish/fish_plugins`.
 
 ## Dev

@@ -8,6 +8,8 @@ export REPO_DIR
 . "$REPO_DIR/lib/pm.sh"
 . "$REPO_DIR/lib/packages.sh"
 
+declare -A GROUP_INFO
+group_info() { GROUP_INFO[$1]=$2; }
 for m in "$REPO_DIR"/modules/*.sh; do . "$m"; done
 
 DEFAULT_GROUPS="base shell cli langs cloud sec config"
@@ -34,26 +36,13 @@ optional: $OPTIONAL_GROUPS
 USAGE
 }
 
-list_groups() {
-  cat <<LIST
-base      git curl wget unzip jq tree htop vim ripgrep fd bat build toolchain
-shell     fish tmux fzf starship zoxide
-cli       gh lazygit lazydocker delta yq direnv claude eza xh fx dust
-          btop atuin
-langs     go node python uv rust
-cloud     docker kubectl helm k9s terraform aws granted
-sec       nmap tcpdump dig whois socat openssl trivy grype syft gitleaks
-          hadolint cosign semgrep checkov detect-secrets
-config    dotfile symlinks, fisher, tpm, default shell
+describe_group() { printf '%-11s%s\n' "$1" "${GROUP_INFO[$1]}"; }
 
-pentest   ffuf gobuster httpx subfinder nuclei katana dnsx assetfinder
-          waybackurls sqlmap
-wordlists SecLists (~1 GB)
-ruby      rbenv, ruby-build, latest stable ruby
-java      jdk, maven
-gcloud    google cloud sdk
-tmux-boxes patched tmux 3.7b with rounded per-pane border boxes
-LIST
+list_groups() {
+  local g
+  for g in $DEFAULT_GROUPS; do describe_group "$g"; done
+  echo
+  for g in $OPTIONAL_GROUPS; do describe_group "$g"; done
 }
 
 while [ $# -gt 0 ]; do

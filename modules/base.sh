@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+group_info base "git curl wget unzip jq tree htop vim ripgrep fd bat build toolchain"
+
 group_base() {
   step "base packages"
   ensure_packages git curl wget unzip tar ca-certificates gnupg less \

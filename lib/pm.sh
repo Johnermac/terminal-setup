@@ -4,30 +4,13 @@ PM=none
 PM_REFRESHED=0
 
 detect_pm() {
-  if have apt-get; then
-    PM=apt
-    return
-  fi
-  if have pacman; then
-    PM=pacman
-    return
-  fi
-  if have dnf; then
-    PM=dnf
-    return
-  fi
-  if have zypper; then
-    PM=zypper
-    return
-  fi
-  if have apk; then
-    PM=apk
-    return
-  fi
-  if have brew; then
-    PM=brew
-    return
-  fi
+  local entry
+  for entry in apt-get:apt pacman:pacman dnf:dnf zypper:zypper apk:apk brew:brew; do
+    if have "${entry%%:*}"; then
+      PM=${entry#*:}
+      return
+    fi
+  done
   PM=none
 }
 
@@ -40,8 +23,7 @@ pm_refresh() {
     zypper) sudo_run zypper --non-interactive refresh ;;
     apk) sudo_run apk update ;;
     brew) run brew update ;;
-    dnf) : ;;
-    none) : ;;
+    dnf | none) : ;;
   esac
 }
 

@@ -63,21 +63,16 @@ os_name() {
 
 is_wsl() { grep -qi microsoft /proc/version 2>/dev/null; }
 
-arch_go() {
+arch_as() {
   case "$(uname -m)" in
-    x86_64 | amd64) echo amd64 ;;
-    aarch64 | arm64) echo arm64 ;;
+    x86_64 | amd64) echo "$1" ;;
+    aarch64 | arm64) echo "$2" ;;
     *) echo unsupported ;;
   esac
 }
 
-arch_uname() {
-  case "$(uname -m)" in
-    x86_64 | amd64) echo x86_64 ;;
-    aarch64 | arm64) echo aarch64 ;;
-    *) echo unsupported ;;
-  esac
-}
+arch_go() { arch_as amd64 arm64; }
+arch_uname() { arch_as x86_64 aarch64; }
 
 latest_tag() {
   local json v
@@ -91,13 +86,58 @@ mktmp() { mktemp -d "${TMPDIR:-/tmp}/terminal-setup.XXXXXX"; }
 
 install_bin() { sudo_run install -m 0755 "$1" "/usr/local/bin/$(basename "$1")"; }
 
-install_tar_bins() {
-  local url=$1 tmp m
-  shift
+release_fill() {
+  local s=$1
+  s=${s//"{v}"/$2}
+  s=${s//"{arch}"/$3}
+  s=${s//"{os}"/$(os_name)}
+  s=${s//"{Os}"/$(uname -s)}
+  printf '%s' "$s"
+}
+
+runs_ok() { "$1" --version >/dev/null 2>&1; }
+
+brew_pkg() {
+  [ "$PM" = brew ] || return 1
+  ensure_packages "$1"
+}
+
+release_bin() {
+  local installed_check=have
+  if [ "$1" = --check-runs ]; then
+    installed_check=runs_ok
+    shift
+  fi
+  local tool=$1 repo=$2 arch_names=$3 path=$4 version arch url tmp member
+  shift 4
+
+  brew_pkg "$tool" && return
+  if "$installed_check" "$tool"; then
+    skip "$tool"
+    return
+  fi
+
+  arch=$(arch_as "${arch_names%/*}" "${arch_names#*/}")
+  if [ "$arch" = unsupported ]; then
+    warn "$tool: unsupported arch"
+    return
+  fi
+  if ! version=$(latest_tag "$repo"); then
+    warn "$tool: release lookup failed"
+    return
+  fi
+
+  url="https://github.com/$repo/releases/download/$(release_fill "$path" "$version" "$arch")"
   tmp=$(mktmp)
-  run_sh "curl -fsSL '$url' | tar xz -C '$tmp'"
-  for m in "$@"; do install_bin "$tmp/$m"; done
+  if [ $# -eq 0 ]; then
+    run_sh "curl -fsSL -o '$tmp/$tool' '$url'"
+    install_bin "$tmp/$tool"
+  else
+    run_sh "curl -fsSL '$url' | tar xz -C '$tmp'"
+    for member in "$@"; do install_bin "$tmp/$(release_fill "$member" "$version" "$arch")"; done
+  fi
   run rm -rf "$tmp"
+  ok "$tool $version"
 }
 
 version_ge() {

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+group_info shell "fish tmux fzf starship zoxide"
+
 FZF_MIN_VERSION=0.48.0
 
 group_shell() {

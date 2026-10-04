@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+group_info tmux-boxes "patched tmux 3.7b with rounded per-pane border boxes"
+
 TMUX_BOXES_TAG=3.7b
 
 install_tmux_boxes() {

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+group_info langs "go node python uv rust"
+
 install_go() {
   local want a tmp
   a=$(arch_go)
@@ -33,14 +35,11 @@ install_go() {
 
 install_node() {
   local want a tmp
-  case "$(uname -m)" in
-    x86_64 | amd64) a=x64 ;;
-    aarch64 | arm64) a=arm64 ;;
-    *)
-      warn "node: unsupported arch"
-      return
-      ;;
-  esac
+  a=$(arch_as x64 arm64)
+  [ "$a" = unsupported ] && {
+    warn "node: unsupported arch"
+    return
+  }
 
   local index
   index=$(fetch https://nodejs.org/dist/index.json) || {
