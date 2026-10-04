@@ -1,21 +1,23 @@
 #!/bin/sh
 
-get() { tmux show -gqv @claude_pending; }
+pending() { tmux show -gqv @claude_pending; }
 
-put() {
+set_pending() {
   list=$(echo "$1" | xargs)
   tmux set -g @claude_pending "$list"
   tmux set -g @claude_count "$(echo "$list" | wc -w | tr -d ' ')"
   tmux refresh-client -S 2>/dev/null
 }
 
-drop() { get | tr ' ' '\n' | grep -vxF "$1" | grep -v '^$' | tr '\n' ' '; }
+pending_without() { pending | tr ' ' '\n' | grep -vxF "$1" | grep -v '^$' | tr '\n' ' '; }
 
-alive() { tmux display -p -t "$1" '#{pane_id}' >/dev/null 2>&1; }
+unmark() { case " $(pending) " in *" $1 "*) set_pending "$(pending_without "$1")" ;; esac }
 
-label() { tmux display -p -t "$1" '#S:#I #W'; }
+pane_alive() { tmux display -p -t "$1" '#{pane_id}' >/dev/null 2>&1; }
 
-state() {
+pane_label() { tmux display -p -t "$1" '#S:#I #W'; }
+
+set_state() {
   if [ -n "$2" ]; then
     tmux set -p -t "$1" @claude "$2"
   else
@@ -24,11 +26,9 @@ state() {
   tmux refresh-client -S
 } 2>/dev/null
 
-unpend() { case " $(get) " in *" $1 "*) put "$(drop "$1")" ;; esac; }
-
-go() {
+jump_to() {
   tmux switch-client -t "$1" \; select-window -t "$1" \; select-pane -t "$1"
-  put "$(drop "$1")"
+  set_pending "$(pending_without "$1")"
 }
 
 case "$1" in
@@ -38,53 +38,61 @@ case "$1" in
     event=$(jq -r '.hook_event_name // empty' 2>/dev/null)
     viewing=$(tmux display -p -t "$p" '#{&&:#{session_attached},#{&&:#{window_active},#{pane_active}}}')
     if [ "$event" = Notification ]; then
-      state "$p" wait
+      set_state "$p" wait
       mark="✻?"
     elif [ "$viewing" = 1 ]; then
-      state "$p" ""
+      set_state "$p" ""
     else
-      state "$p" "done"
+      set_state "$p" "done"
       mark="✻"
     fi
     [ "$viewing" = 1 ] && exit 0
-    put "$p $(drop "$p")"
+    set_pending "$p $(pending_without "$p")"
     tmux display -d 2500 "$mark $(tmux display -p -t "$p" '#S:#I')"
     ;;
   busy)
     [ -n "$TMUX_PANE" ] || exit 0
-    state "$TMUX_PANE" busy
-    unpend "$TMUX_PANE"
+    set_state "$TMUX_PANE" busy
+    unmark "$TMUX_PANE"
     ;;
   end)
     [ -n "$TMUX_PANE" ] || exit 0
-    state "$TMUX_PANE" ""
-    unpend "$TMUX_PANE"
+    set_state "$TMUX_PANE" ""
+    unmark "$TMUX_PANE"
     ;;
   seen)
     [ -n "$2" ] || exit 0
-    unpend "$2"
-    [ "$(tmux show -pqv -t "$2" @claude)" = "done" ] && state "$2" ""
+    unmark "$2"
+    [ "$(tmux show -pqv -t "$2" @claude)" = "done" ] && set_state "$2" ""
     ;;
   jump)
-    for p in $(get); do
-      alive "$p" && { go "$p"; exit 0; }
-      put "$(drop "$p")"
+    for p in $(pending); do
+      pane_alive "$p" && {
+        jump_to "$p"
+        exit 0
+      }
+      set_pending "$(pending_without "$p")"
     done
     tmux display "no pending Claude sessions"
     ;;
   pick)
-    list=""
-    for p in $(get); do
-      if alive "$p"; then list="$list$p	$(label "$p")
-"; else put "$(drop "$p")"; fi
-    done
-    [ -n "$list" ] || { tmux display "no pending Claude sessions"; exit 0; }
-    sel=$(printf '%s' "$list" | fzf --reverse --with-nth=2.. --delimiter='	' \
+    menu=$(for p in $(pending); do
+      if pane_alive "$p"; then
+        printf '%s\t%s\n' "$p" "$(pane_label "$p")"
+      else
+        set_pending "$(pending_without "$p")"
+      fi
+    done)
+    [ -n "$menu" ] || {
+      tmux display "no pending Claude sessions"
+      exit 0
+    }
+    sel=$(printf '%s' "$menu" | fzf --reverse --with-nth=2.. --delimiter="$(printf '\t')" \
       --header='enter: jump / ctrl-x: clear all' --bind 'ctrl-x:execute-silent('"$0"' clear)+abort') || exit 0
-    go "$(echo "$sel" | cut -f1)"
+    jump_to "$(echo "$sel" | cut -f1)"
     ;;
   clear)
-    put ""
+    set_pending ""
     ;;
 esac
 exit 0

@@ -1,45 +1,8 @@
 #!/usr/bin/env bash
 
-cmd=$(jq -r '.tool_input.command // empty')
-[ -n "$cmd" ] || exit 0
+CREDENTIAL_VARS="AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE AWS_CONTAINER_CREDENTIALS_FULL_URI AWS_WEB_IDENTITY_TOKEN_FILE"
 
-decide() {
-  jq -nc --arg d "$1" --arg r "claude-guard: $2" \
-    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $d, permissionDecisionReason: $r}}'
-  exit 0
-}
-
-is_prod() {
-  [ -n "$1" ] || return 1
-  case " ${AWS_PROD_PROFILES:-} " in *" $1 "*) return 0 ;; esac
-  return 1
-}
-
-flat=$(printf '%s' "$cmd" | tr -d "\"'\\\\")
-read -ra words <<<"$(printf '%s' "$flat" | tr '\n\t=(){}`;|&<>' ' ')"
-
-for w in "${words[@]}"; do
-  [ "${w##*/}" = aws-vault ] && decide deny "aws-vault is the human-only breakglass path"
-done
-
-prod=""
-is_prod "${AWS_PROFILE:-}" && prod=${AWS_PROFILE}
-is_prod "${AWS_DEFAULT_PROFILE:-}" && prod=${AWS_DEFAULT_PROFILE}
-for ((j = 0; j < ${#words[@]}; j++)); do
-  w=${words[j]}
-  is_prod "$w" && prod=$w
-  case "$w" in
-    AWS_ACCESS_KEY_ID | AWS_SECRET_ACCESS_KEY | AWS_SESSION_TOKEN | AWS_CONFIG_FILE | AWS_SHARED_CREDENTIALS_FILE | AWS_CONTAINER_CREDENTIALS_FULL_URI | AWS_WEB_IDENTITY_TOKEN_FILE)
-      prod="explicit credentials via $w"
-      ;;
-  esac
-done
-while read -r v; do
-  [ -n "$v" ] || continue
-  [[ $v =~ ^[A-Za-z0-9_.-]+$ ]] || prod="dynamic profile $v"
-done < <(printf '%s\n' "$flat" | grep -oE '(--profile[= ]+|AWS(_DEFAULT)?_PROFILE=)[^ ;&|]*' | sed -E 's/^(--profile[= ]+|AWS(_DEFAULT)?_PROFILE=)//')
-
-aws_read_op() {
+aws_is_read_op() {
   case "$1 $2" in
     "configure list" | "configure list-profiles" | "configure get" | "sso login" | "sso logout" | "login "* | "logout "* | "help "*) return 0 ;;
     "sts get-caller-identity" | "sts get-access-key-info" | "sts decode-authorization-message") return 0 ;;
@@ -52,68 +15,135 @@ aws_read_op() {
   return 1
 }
 
-check_segment() {
-  local -a t
-  read -ra t <<<"$(printf '%s' "$1" | tr '(){}' ' ')"
-  local n=${#t[@]} i c=0 w
+terraform_is_read_cmd() {
+  case "$1" in
+    plan | show | output | validate | fmt | providers | version | graph | console | -help | -version) return 0 ;;
+  esac
+  return 1
+}
 
-  for ((i = 0; i < n; i++)); do
-    if [ "${t[i]##*/}" = git ] && [ "${t[i + 1]:-}" = push ]; then
-      for w in "${t[@]:i+2}"; do
-        case "$w" in --force | -f | --force-if-includes | +*) decide ask "force push" ;; esac
-      done
-    fi
+exit_with_decision() {
+  jq -nc --arg d "$1" --arg r "claude-guard: $2" \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $d, permissionDecisionReason: $r}}'
+  exit 0
+}
+
+ask_prod() { exit_with_decision ask "$1 on prod: $prod_reason"; }
+
+is_wrapper() {
+  case "$1" in
+    sudo | doas | env | command | builtin | nohup | exec | time | nice | ionice | stdbuf | timeout | xargs | -* | [0-9]* | [A-Za-z_]*=*) return 0 ;;
+  esac
+  return 1
+}
+
+is_prod() {
+  [ -n "$1" ] || return 1
+  case " ${AWS_PROD_PROFILES:-} " in *" $1 "*) return 0 ;; esac
+  return 1
+}
+
+deny_breakglass() {
+  local word
+  for word in "${cmd_words[@]}"; do
+    [ "${word##*/}" = aws-vault ] && exit_with_decision deny "aws-vault is the human-only breakglass path"
+  done
+}
+
+detect_prod_context() {
+  local word value
+  prod_reason=""
+  is_prod "${AWS_PROFILE:-}" && prod_reason="profile $AWS_PROFILE"
+  is_prod "${AWS_DEFAULT_PROFILE:-}" && prod_reason="profile $AWS_DEFAULT_PROFILE"
+
+  for word in "${cmd_words[@]}"; do
+    is_prod "$word" && prod_reason="profile $word"
+    case " $CREDENTIAL_VARS " in *" $word "*) prod_reason="explicit credentials via $word" ;; esac
   done
 
-  [ -n "$prod" ] || return 0
+  while read -r value; do
+    [ -n "$value" ] || continue
+    [[ $value =~ ^[A-Za-z0-9_.-]+$ ]] || prod_reason="dynamic profile $value"
+  done < <(printf '%s\n' "$unquoted_cmd" | grep -oE '(--profile[= ]+|AWS(_DEFAULT)?_PROFILE=)[^ ;&|]*' | sed -E 's/^(--profile[= ]+|AWS(_DEFAULT)?_PROFILE=)//')
+}
 
-  while [ "$c" -lt "$n" ]; do
-    case "${t[c]##*/}" in
-      sudo | doas | env | command | builtin | nohup | exec | time | nice | ionice | stdbuf | timeout | xargs | -* | [0-9]* | [A-Za-z_]*=*) c=$((c + 1)) ;;
+check_force_push() {
+  local word
+  for word in "$@"; do
+    case "$word" in --force | -f | --force-if-includes | +*) exit_with_decision ask "force push" ;; esac
+  done
+}
+
+check_aws() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --debug | --no-cli-pager | --no-paginate | --no-verify-ssl | --no-sign-request | --cli-auto-prompt | --no-cli-auto-prompt | --*=*) shift ;;
+      --*)
+        shift
+        [ $# -gt 0 ] && shift
+        ;;
       *) break ;;
     esac
   done
-  [ "${t[c]:0:1}" = '$' ] && decide ask "dynamic command ${t[c]} with prod profile $prod"
+  aws_is_read_op "${1:-}" "${2:-}" || ask_prod "aws ${1:-} ${2:-}"
+}
 
-  for ((i = 0; i < n; i++)); do
-    case "${t[i]##*/}" in
-      aws)
-        local k=$((i + 1))
-        while [ "$k" -lt "$n" ]; do
-          case "${t[k]}" in
-            --debug | --no-cli-pager | --no-paginate | --no-verify-ssl | --no-sign-request | --cli-auto-prompt | --no-cli-auto-prompt) k=$((k + 1)) ;;
-            --*=*) k=$((k + 1)) ;;
-            --*) k=$((k + 2)) ;;
-            *) break ;;
-          esac
-        done
-        aws_read_op "${t[k]:-}" "${t[k + 1]:-}" || decide ask "aws ${t[k]:-} ${t[k + 1]:-} with prod profile $prod"
-        ;;
-      terraform | tofu)
-        local k=$((i + 1))
-        [[ ${t[k]:-} == -* ]] && k=$((k + 1))
-        case "${t[k]:-}" in
-          plan | show | output | validate | fmt | providers | version | graph | console | -help | -version) ;;
-          init)
-            for w in "${t[@]:k+1}"; do
-              case "$w" in -migrate-state* | -force-copy*) decide ask "terraform init $w with prod profile $prod" ;; esac
-            done
-            ;;
-          state | workspace)
-            case "${t[k + 1]:-}" in
-              list | show) ;;
-              *) decide ask "terraform ${t[k]} ${t[k + 1]:-} with prod profile $prod" ;;
-            esac
-            ;;
-          *) decide ask "terraform ${t[k]:-} with prod profile $prod" ;;
-        esac
-        ;;
+check_terraform() {
+  [[ ${1:-} == -* ]] && shift
+  terraform_is_read_cmd "${1:-}" && return
+  case "${1:-}" in
+    init)
+      shift
+      local word
+      for word in "$@"; do
+        case "$word" in -migrate-state* | -force-copy*) ask_prod "terraform init $word" ;; esac
+      done
+      ;;
+    state | workspace)
+      case "${2:-}" in
+        list | show) ;;
+        *) ask_prod "terraform $1 ${2:-}" ;;
+      esac
+      ;;
+    *) ask_prod "terraform ${1:-}" ;;
+  esac
+}
+
+check_segment() {
+  local -a tokens
+  read -ra tokens <<<"$(printf '%s' "$1" | tr '(){}' ' ')"
+  local count=${#tokens[@]} i cmd_idx=0
+
+  for ((i = 0; i < count; i++)); do
+    [ "${tokens[i]##*/}" = git ] && [ "${tokens[i + 1]:-}" = push ] && check_force_push "${tokens[@]:i+2}"
+  done
+
+  [ -n "$prod_reason" ] || return 0
+
+  while [ "$cmd_idx" -lt "$count" ] && is_wrapper "${tokens[cmd_idx]##*/}"; do
+    cmd_idx=$((cmd_idx + 1))
+  done
+  [ "${tokens[cmd_idx]:0:1}" = '$' ] && ask_prod "dynamic command ${tokens[cmd_idx]}"
+
+  for ((i = 0; i < count; i++)); do
+    case "${tokens[i]##*/}" in
+      aws) check_aws "${tokens[@]:i+1}" ;;
+      terraform | tofu) check_terraform "${tokens[@]:i+1}" ;;
     esac
   done
 }
 
-while IFS= read -r seg; do
-  check_segment "$seg"
-done < <(printf '%s\n' "$flat" | sed -E 's/(&&|\|\||;|\||&|`|\$\(|\(|\))/\n/g')
+cmd=$(jq -r '.tool_input.command // empty')
+[ -n "$cmd" ] || exit 0
+
+unquoted_cmd=$(printf '%s' "$cmd" | tr -d "\"'\\\\")
+read -ra cmd_words <<<"$(printf '%s' "$unquoted_cmd" | tr '\n\t=(){}`;|&<>' ' ')"
+
+deny_breakglass
+detect_prod_context
+
+while IFS= read -r segment; do
+  check_segment "$segment"
+done < <(printf '%s\n' "$unquoted_cmd" | sed -E 's/(&&|\|\||;|\||&|`|\$\(|\(|\))/\n/g')
 
 exit 0
