@@ -149,10 +149,10 @@ set -gx AWS_PROD_PROFILES mgmt audit-mgmt
 
 ## Claude prod guard
 
-`claude-guard` runs before every Bash command Claude issues. A command is in prod context when the environment profile is listed in `AWS_PROD_PROFILES`, when any word of the command is a listed profile, or when a profile comes from a variable. In prod context it forces a confirmation prompt, even in auto mode, unless every `aws` and `terraform` call is a known read:
+`claude-guard` runs before every Bash command Claude issues. A command is in prod context when the environment profile is listed in `AWS_PROD_PROFILES`, when any word of the command is a listed profile, when a profile value is not a plain name (variable, substitution), or when credentials come from `AWS_ACCESS_KEY_ID`, `AWS_SESSION_TOKEN`, `AWS_CONFIG_FILE` and similar. In prod context it forces a confirmation prompt, even in auto mode, unless every `aws` and `terraform` call is a known read:
 
-- `aws`: `describe-*`, `list-*`, `get-*`, `s3 ls`, `logs tail`, `sts` and similar
-- `terraform` or `tofu`: `plan`, `show`, `output`, `validate`, `fmt`, `init`, `state list|show`, `workspace list|show`
+- `aws`: `describe-*`, `list-*`, `get-*`, `s3 ls`, `logs tail`, `sts get-caller-identity`, `configure list|get` and similar; calls that hand out credentials or access (`export-credentials`, `get-login-password`, `assume-role`, `get-secret-value`, `presign`) ask
+- `terraform` or `tofu`: `plan`, `show`, `output`, `validate`, `fmt`, `init` without `-migrate-state`, `state list|show`, `workspace list|show`
 
 A command that is itself a variable (`$x ...`) also asks in prod context. Force pushes, including `+refspec`, always ask. Any mention of `aws-vault` is denied: it stays a human-only breakglass path.
 

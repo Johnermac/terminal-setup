@@ -29,18 +29,25 @@ for ((j = 0; j < ${#words[@]}; j++)); do
   w=${words[j]}
   is_prod "$w" && prod=$w
   case "$w" in
-    --profile | AWS_PROFILE | AWS_DEFAULT_PROFILE)
-      [ "${words[j + 1]:0:1}" = '$' ] && prod="dynamic ${words[j + 1]}"
+    AWS_ACCESS_KEY_ID | AWS_SECRET_ACCESS_KEY | AWS_SESSION_TOKEN | AWS_CONFIG_FILE | AWS_SHARED_CREDENTIALS_FILE | AWS_CONTAINER_CREDENTIALS_FULL_URI | AWS_WEB_IDENTITY_TOKEN_FILE)
+      prod="explicit credentials via $w"
       ;;
   esac
 done
+while read -r v; do
+  [ -n "$v" ] || continue
+  [[ $v =~ ^[A-Za-z0-9_.-]+$ ]] || prod="dynamic profile $v"
+done < <(printf '%s\n' "$flat" | grep -oE '(--profile[= ]+|AWS(_DEFAULT)?_PROFILE=)[^ ;&|]*' | sed -E 's/^(--profile[= ]+|AWS(_DEFAULT)?_PROFILE=)//')
 
 aws_read_op() {
-  case "$1" in
-    configure | sso | login | logout | help | sts) return 0 ;;
+  case "$1 $2" in
+    "configure list" | "configure list-profiles" | "configure get" | "sso login" | "sso logout" | "login "* | "logout "* | "help "*) return 0 ;;
+    "sts get-caller-identity" | "sts get-access-key-info" | "sts decode-authorization-message") return 0 ;;
+    configure* | sso* | sts* | login* | logout*) return 1 ;;
   esac
   case "$2" in
-    describe-* | list-* | get-* | head-* | lookup-* | search-* | batch-get-* | filter-* | test-* | simulate-* | validate-* | estimate-* | preview-* | wait | help | ls | presign | tail | scan | query) return 0 ;;
+    get-login-password | get-role-credentials | get-session-token | get-federation-token | get-authorization-token | get-secret-value | get-credentials-for-identity | get-open-id-token* | get-cluster-credentials* | export-credentials) return 1 ;;
+    describe-* | list-* | get-* | head-* | lookup-* | search-* | batch-get-* | filter-* | simulate-* | validate-* | estimate-* | wait | help | ls | tail | scan | query) return 0 ;;
   esac
   return 1
 }
@@ -86,7 +93,12 @@ check_segment() {
         local k=$((i + 1))
         [[ ${t[k]:-} == -* ]] && k=$((k + 1))
         case "${t[k]:-}" in
-          plan | show | output | validate | fmt | init | providers | version | graph | console | -help | -version) ;;
+          plan | show | output | validate | fmt | providers | version | graph | console | -help | -version) ;;
+          init)
+            for w in "${t[@]:k+1}"; do
+              case "$w" in -migrate-state* | -force-copy*) decide ask "terraform init $w with prod profile $prod" ;; esac
+            done
+            ;;
           state | workspace)
             case "${t[k + 1]:-}" in
               list | show) ;;
