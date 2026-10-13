@@ -21,16 +21,15 @@ link_dotfiles() {
   for f in "$REPO_DIR"/config/fish/functions/*.fish; do
     link "$f" "$HOME/.config/fish/functions/$(basename "$f")"
   done
+  for f in "$REPO_DIR"/config/bin/*; do
+    link "$f" "$HOME/.local/bin/$(basename "$f")"
+  done
+  run chmod +x "$REPO_DIR"/config/bin/*
 
   link "$REPO_DIR/config/starship.toml" "$HOME/.config/starship.toml"
   link "$REPO_DIR/config/tmux/tmux.conf" "$HOME/.tmux.conf"
-  link "$REPO_DIR/config/bin/tmux-git-title" "$HOME/.local/bin/tmux-git-title"
-  link "$REPO_DIR/config/bin/tmux-resurrect-heal" "$HOME/.local/bin/tmux-resurrect-heal"
-  link "$REPO_DIR/config/bin/claude-tmux" "$HOME/.local/bin/claude-tmux"
-  link "$REPO_DIR/config/bin/claude-guard" "$HOME/.local/bin/claude-guard"
   link "$REPO_DIR/config/git/config.inc" "$HOME/.config/git/terminal-setup.inc"
   link "$REPO_DIR/config/atuin/config.toml" "$HOME/.config/atuin/config.toml"
-  run chmod +x "$REPO_DIR/config/bin/tmux-git-title" "$REPO_DIR/config/bin/tmux-resurrect-heal" "$REPO_DIR/config/bin/claude-tmux" "$REPO_DIR/config/bin/claude-guard"
 }
 
 link_claude_hooks() {
