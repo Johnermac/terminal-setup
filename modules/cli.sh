@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-group_info cli "gh lazygit lazydocker delta yq direnv claude eza xh fx dust btop atuin"
+group_info cli "gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin"
 
 install_lazydocker() {
   brew_pkg lazydocker && return
@@ -27,6 +27,7 @@ group_cli() {
   release_bin gh cli/cli amd64/arm64 'v{v}/gh_{v}_{os}_{arch}.tar.gz' 'gh_{v}_{os}_{arch}/bin/gh'
   release_bin lazygit jesseduffield/lazygit x86_64/arm64 'v{v}/lazygit_{v}_{Os}_{arch}.tar.gz' lazygit
   install_lazydocker
+  release_bin bat sharkdp/bat x86_64/aarch64 'v{v}/bat-v{v}-{arch}-unknown-linux-musl.tar.gz' 'bat-v{v}-{arch}-unknown-linux-musl/bat'
   release_bin delta dandavison/delta x86_64/aarch64 '{v}/delta-{v}-{arch}-unknown-linux-gnu.tar.gz' 'delta-{v}-{arch}-unknown-linux-gnu/delta'
   release_bin yq mikefarah/yq amd64/arm64 'v{v}/yq_{os}_{arch}'
   release_bin eza eza-community/eza x86_64/aarch64 'v{v}/eza_{arch}-unknown-linux-gnu.tar.gz' eza

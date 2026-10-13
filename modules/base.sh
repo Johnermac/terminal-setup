@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-group_info base "git curl wget unzip jq tree htop vim ripgrep fd bat build toolchain"
+group_info base "git curl wget unzip jq tree htop vim ripgrep fd build toolchain"
 
 group_base() {
   step "base packages"
   ensure_packages git curl wget unzip tar ca-certificates gnupg less \
-    jq tree htop vim build cmake ripgrep fd bat
+    jq tree htop vim build cmake ripgrep fd
 
   step "command shims"
   run mkdir -p "$HOME/.local/bin"
@@ -17,14 +17,5 @@ group_base() {
     ok "fd -> fdfind"
   else
     warn "fd not installed"
-  fi
-
-  if have bat; then
-    skip "bat"
-  elif have batcat; then
-    run ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
-    ok "bat -> batcat"
-  else
-    warn "bat not installed"
   fi
 }
