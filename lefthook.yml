@@ -2,10 +2,10 @@ pre-commit:
   parallel: true
   commands:
     shellcheck:
-      glob: "*.sh"
+      glob: ["*.sh", "config/bin/*"]
       run: shellcheck -x {staged_files}
     shfmt:
-      glob: "*.sh"
+      glob: ["*.sh", "config/bin/*"]
       run: shfmt -d -i 2 -ci {staged_files}
     trailing-whitespace:
       exclude: "patches/*"
