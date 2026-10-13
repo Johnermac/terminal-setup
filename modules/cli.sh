@@ -21,12 +21,20 @@ install_claude() {
   ok "claude"
 }
 
+drop_batcat_shim() {
+  local shim="$HOME/.local/bin/bat"
+  [ -L "$shim" ] && [ "$(basename "$(readlink "$shim")")" = batcat ] || return 0
+  run rm -rf "$shim" "${XDG_CACHE_HOME:-$HOME/.cache}/bat"
+  ok "removed batcat shim and its theme cache"
+}
+
 group_cli() {
   step "cli tools"
   ensure_packages direnv
   release_bin gh cli/cli amd64/arm64 'v{v}/gh_{v}_{os}_{arch}.tar.gz' 'gh_{v}_{os}_{arch}/bin/gh'
   release_bin lazygit jesseduffield/lazygit x86_64/arm64 'v{v}/lazygit_{v}_{Os}_{arch}.tar.gz' lazygit
   install_lazydocker
+  drop_batcat_shim
   release_bin bat sharkdp/bat x86_64/aarch64 'v{v}/bat-v{v}-{arch}-unknown-linux-musl.tar.gz' 'bat-v{v}-{arch}-unknown-linux-musl/bat'
   release_bin delta dandavison/delta x86_64/aarch64 '{v}/delta-{v}-{arch}-unknown-linux-gnu.tar.gz' 'delta-{v}-{arch}-unknown-linux-gnu/delta'
   release_bin yq mikefarah/yq amd64/arm64 'v{v}/yq_{os}_{arch}'
