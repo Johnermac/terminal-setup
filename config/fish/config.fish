@@ -16,18 +16,13 @@ if status is-interactive
         --marker=✓
         --color=hl:yellow,hl+:bright-yellow,pointer:cyan,marker:green,info:gray,border:gray,prompt:cyan'
 
-    set -gx FZF_CTRL_R_OPTS "
-        --exact
-        --preview 'echo -- {} | fish_indent --ansi'
-        --preview-window=bottom:3:hidden:wrap
-        --bind ctrl-/:toggle-preview"
-
     set -gx FZF_DEFAULT_COMMAND 'fd --type f --hidden --exclude .git'
     set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
     set -gx FZF_CTRL_T_OPTS "--preview 'bat --style=numbers --color=always --line-range=:200 {}'"
     set -gx FZF_ALT_C_COMMAND 'fd --type d --hidden --exclude .git'
 
     fzf --fish | source
+    functions -q fzf_configure_bindings; and fzf_configure_bindings --directory= --history= --variables=
 
     zoxide init fish | source
     starship init fish | source
