@@ -14,7 +14,9 @@ if status is-interactive
         --cycle
         --pointer=▶
         --marker=✓
-        --color=hl:yellow,hl+:bright-yellow,pointer:cyan,marker:green,info:gray,border:gray,prompt:cyan'
+        --color=bg+:#313244,spinner:#f5e0dc,hl:#f38ba8,fg:#cdd6f4,header:#f38ba8
+        --color=info:#cba6f7,pointer:#f5e0dc,marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7
+        --color=hl+:#f38ba8,selected-bg:#45475a,border:#6c7086,label:#cdd6f4'
 
     set -gx FZF_DEFAULT_COMMAND 'fd --type f --hidden --exclude .git'
     set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND

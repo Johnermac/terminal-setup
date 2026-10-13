@@ -30,6 +30,9 @@ link_dotfiles() {
   link "$REPO_DIR/config/tmux/tmux.conf" "$HOME/.tmux.conf"
   link "$REPO_DIR/config/git/config.inc" "$HOME/.config/git/terminal-setup.inc"
   link "$REPO_DIR/config/atuin/config.toml" "$HOME/.config/atuin/config.toml"
+  link "$REPO_DIR/config/bat/config" "$HOME/.config/bat/config"
+  link "$REPO_DIR/config/btop/themes/catppuccin_mocha.theme" "$HOME/.config/btop/themes/catppuccin_mocha.theme"
+  link "$REPO_DIR/config/lazygit/config.yml" "$HOME/.config/lazygit/config.yml"
 }
 
 link_claude_hooks() {
@@ -98,6 +101,19 @@ import_atuin_history() {
   fi
 }
 
+apply_btop_theme() {
+  local btop_conf="$HOME/.config/btop/btop.conf"
+  if grep -qx 'color_theme = "catppuccin_mocha"' "$btop_conf" 2>/dev/null; then
+    skip "btop theme"
+  elif grep -q '^color_theme' "$btop_conf" 2>/dev/null; then
+    run sed -i 's/^color_theme = .*/color_theme = "catppuccin_mocha"/' "$btop_conf"
+    ok "btop theme"
+  else
+    run sh -c "echo 'color_theme = \"catppuccin_mocha\"' >> '$btop_conf'"
+    ok "btop theme"
+  fi
+}
+
 install_tpm() {
   have tmux || {
     warn "tmux not installed"
@@ -150,6 +166,7 @@ group_config() {
   link_gitconfig
   link_claude_hooks
   import_atuin_history
+  apply_btop_theme
   step "fish plugins"
   install_fisher
   step "tmux plugins"
