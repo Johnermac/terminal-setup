@@ -1,0 +1,64 @@
+tmux     prefix                 Ctrl-a
+tmux     prefix ?               this cheatsheet
+tmux     prefix r               reload tmux config
+tmux     prefix |               split right
+tmux     prefix -               split down
+tmux     prefix c               new window
+tmux     prefix z               zoom pane
+tmux     prefix x               kill pane
+tmux     prefix ,               rename window
+tmux     prefix $               rename session
+tmux     prefix d               detach
+tmux     prefix C-j             session and window tree
+tmux     prefix S / s           sync panes on / off
+tmux     prefix B               toggle pane border boxes
+tmux     prefix N               toggle rounded / heavy borders
+tmux     prefix :list-keys      every tmux binding
+tmux     Alt-arrows             move between panes
+tmux     prefix Shift-arrows    resize pane
+tmux     prefix 1-9             go to window
+popup    prefix g               shell popup in current dir
+popup    prefix G               lazygit
+popup    prefix D               lazydocker
+claude   prefix j               jump to Claude pane waiting for input
+claude   prefix J               pick a Claude pane
+copy     prefix [               copy mode
+copy     prefix /               search scrollback
+copy     v / y                  select / copy (copy mode)
+copy     o                      open selection (copy mode)
+copy     Ctrl-o                 open selection in editor (copy mode)
+copy     prefix y               copy command line
+copy     prefix Y               copy current dir
+session  prefix Ctrl-s          save sessions
+session  prefix Ctrl-r          restore sessions
+log      prefix P               toggle pane logging
+log      prefix Alt-p           save visible pane to file
+log      prefix Alt-P           save full pane history to file
+log      prefix Alt-c           clear pane history
+fish     Ctrl-r                 history search (atuin)
+fish     Ctrl-t                 insert file path (fzf)
+fish     Alt-c                  cd into directory (fzf)
+fish     Ctrl-Alt-l             search git log (fzf)
+fish     Ctrl-Alt-s             search git status (fzf)
+fish     Ctrl-Alt-p             search processes (fzf)
+fish     Alt-e                  edit command line in $EDITOR
+fish     Alt-s                  prepend sudo
+fish     Alt-l                  list current dir
+fish     Alt-h                  man page for current command
+fish     Ctrl-f / Right         accept autosuggestion
+fish     Alt-f                  accept one word of suggestion
+fish     z <dir>                jump to frequent dir (zoxide)
+func     dev [name] [path]      attach or create project tmux session
+func     aic                    commit staged changes with Claude subject
+func     why                    ask Claude why last command failed
+func     tfr [planfile]         Claude risk review of terraform plan
+func     assume <profile>       assume AWS profile (granted)
+func     ports                  listening sockets and owners
+func     serve [port]           HTTP server for current dir
+abbr     g gs ga gc gco gd      git, status, add, commit, checkout, diff
+abbr     gl gp                  git log graph, push
+abbr     d dc dps               docker, compose, ps table
+abbr     k kg kd                kubectl, get, describe
+abbr     tf                     terraform
+abbr     cat bcp                bat, bat plain
+abbr     ll lt                  eza long list, tree

@@ -1,0 +1,3 @@
+#!/bin/sh
+sheet="$(dirname "$(readlink -f "$0")")/../cheatsheet.txt"
+exec fzf --exact --no-sort --height=100% --prompt='keys> ' --info=hidden --bind=enter:ignore <"$sheet"
