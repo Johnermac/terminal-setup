@@ -1,0 +1,9 @@
+#!/bin/sh
+dir="${XDG_DATA_HOME:-$HOME/.local/share}/tmux/resurrect"
+[ -L "$dir/last" ] && [ ! -e "$dir/last" ] || exit 0
+newest=
+for f in "$dir"/tmux_resurrect_*.txt; do
+  [ -e "$f" ] && newest=$f
+done
+[ -n "$newest" ] && ln -sfn "$(basename "$newest")" "$dir/last"
+exit 0
