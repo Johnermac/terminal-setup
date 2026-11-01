@@ -71,6 +71,7 @@ patches/        source patches applied by opt-in groups
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
 | `config/bin/claude-tmux` | `~/.local/bin/claude-tmux` |
 | `config/bin/claude-guard` | `~/.local/bin/claude-guard` |
+| `config/bin/secure-backup` | `~/.local/bin/secure-backup` |
 | `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
 | `config/claude/settings.base.json` | `permissions.deny` merged into `~/.claude/settings.json` |
 | `config/atuin/config.toml` | `~/.config/atuin/config.toml` |
@@ -185,6 +186,34 @@ Claude Code may start outside fish, so set the list in `~/.claude/settings.json`
 
 `settings.base.json` adds deny rules so Claude cannot read AWS credential caches, SSH private keys or `~/.gnupg`.
 
+## Encrypted backups
+
+`secure-backup` encrypts directories into `DEST/<dirname>-YYYYMMDD-HHMM.tar.zst.gpg` with a passphrase (gpg symmetric, AES256) and writes a `.sha256` next to each archive. It keeps the newest 3 archives per directory.
+
+```sh
+secure-backup -o /mnt/backups ~/projects ~/notes   # prompts for the passphrase twice
+secure-backup list /mnt/backups/projects-<date>.tar.zst.gpg
+secure-backup restore /mnt/backups/projects-<date>.tar.zst.gpg ~/
+```
+
+To run it with no arguments, put the defaults in `~/.config/secure-backup/config`. The file stays on the host and is never committed:
+
+```sh
+BACKUP_DEST=/mnt/backups
+BACKUP_SRC=~/projects:~/notes
+BACKUP_KEEP=3
+```
+
+`secure-backup config` shows the resolved settings, `secure-backup --help` lists all of them. Flags override environment variables with the same names, which override the file.
+
+Skipped automatically: `node_modules`, virtualenvs, Python caches, `.terraform`, `.next`, and any directory with a `CACHEDIR.TAG`. To skip more inside one directory, add a `.backupignore` there with one pattern per line. It applies to that directory only.
+
+On a machine without this repo, `gpg`, `zstd` and `tar` are enough:
+
+```sh
+gpg -d projects-<date>.tar.zst.gpg | tar --zstd -xf - -C ~/
+```
+
 ## Border boxes
 
 `--with tmux-boxes` builds tmux 3.7b with `patches/tmux-3.7b.patch`. Every pane gets its own rounded box, at the cost of 2 rows and 2 columns per pane. Boxes turn off in windows with a single pane and while a pane is zoomed. Clicking a box focuses its pane, dragging a box edge or the gap resizes.
@@ -199,7 +228,7 @@ The config enables it only when the running tmux has the `pane-border-boxes` opt
 
 ```sh
 find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-title \
-  ~/.local/bin/claude-tmux ~/.local/bin/claude-guard \
+  ~/.local/bin/claude-tmux ~/.local/bin/claude-guard ~/.local/bin/secure-backup \
   -maxdepth 2 -lname "$PWD/*" -delete
 git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"

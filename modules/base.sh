@@ -4,7 +4,7 @@ group_info base "git curl wget unzip jq tree htop vim ripgrep fd build toolchain
 
 group_base() {
   step "base packages"
-  ensure_packages git curl wget unzip tar ca-certificates gnupg less \
+  ensure_packages git curl wget unzip tar zstd ca-certificates gnupg less \
     jq tree htop vim build cmake ripgrep fd
 
   step "command shims"

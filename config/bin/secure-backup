@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/secure-backup/config"
+DEFAULT_EXCLUDES="node_modules:.venv:venv:__pycache__:.terraform:.next:.pytest_cache:.mypy_cache:.ruff_cache"
+IGNORE_FILE=".backupignore"
+SUFFIX=".tar.zst.gpg"
+STAMP_GLOB="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]"
+tmp=""
+
+usage() {
+  cat <<EOF
+usage:
+  secure-backup [create] [-o DEST] [-k KEEP] [-n NAME] [DIR...]
+      Encrypt each DIR into DEST/NAME-YYYYMMDD-HHMM$SUFFIX (NAME defaults to the
+      directory name). Without DIR, backs up BACKUP_SRC. Keeps the newest KEEP
+      archives per NAME (0 keeps all).
+  secure-backup restore FILE [DIR]   decrypt and extract FILE into DIR (default: .)
+  secure-backup list FILE            list the files inside FILE
+  secure-backup config               show the resolved settings
+
+Settings come from flags, then environment, then $CONFIG:
+  BACKUP_DEST=/path/to/backups
+  BACKUP_SRC=~/projects:~/notes      colon-separated
+  BACKUP_KEEP=3
+  BACKUP_EXCLUDE=*.iso:tmp           colon-separated, added to the defaults
+  BACKUP_PASSFILE=~/.backup-pass     read the passphrase from a file
+
+Always skipped: ${DEFAULT_EXCLUDES//:/ }, directories with CACHEDIR.TAG,
+and the patterns listed in any $IGNORE_FILE file (applies to its own directory).
+EOF
+}
+
+die() {
+  echo "secure-backup: $*" >&2
+  exit 1
+}
+
+need() {
+  local c
+  for c in "$@"; do
+    command -v "$c" >/dev/null || die "missing $c"
+  done
+}
+
+expand_home() {
+  if [[ $1 == \~ || $1 == \~/* ]]; then
+    printf '%s' "$HOME${1:1}"
+  else
+    printf '%s' "$1"
+  fi
+}
+
+expand_list() {
+  local item items out=()
+  IFS=: read -ra items <<<"$1"
+  for item in "${items[@]}"; do
+    [ -n "$item" ] && out+=("$(expand_home "$item")")
+  done
+  printf '%s\n' "${out[@]}"
+}
+
+load_config() {
+  local key value
+  [ -f "$CONFIG" ] || return 0
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    case "$key" in
+      '' | \#*) continue ;;
+      BACKUP_DEST | BACKUP_SRC | BACKUP_KEEP | BACKUP_EXCLUDE | BACKUP_PASSFILE)
+        value="${value%\"}"
+        value="${value#\"}"
+        [ -n "${!key:-}" ] || printf -v "$key" '%s' "$value"
+        ;;
+      *) die "$CONFIG: unknown setting $key" ;;
+    esac
+  done <"$CONFIG"
+}
+
+read_passphrase() {
+  local again
+  if [ -n "${BACKUP_PASSFILE:-}" ]; then
+    pass=$(<"$(expand_home "$BACKUP_PASSFILE")")
+    [ -n "$pass" ] || die "empty passphrase in $BACKUP_PASSFILE"
+    return 0
+  fi
+  read -rsp "passphrase: " pass </dev/tty
+  echo >&2
+  [ -n "$pass" ] || die "empty passphrase"
+  [ "${1:-}" = confirm ] || return 0
+  read -rsp "repeat: " again </dev/tty
+  echo >&2
+  [ "$pass" = "$again" ] || die "passphrases differ"
+}
+
+gpg_with_pass() {
+  gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 "$@" 3< <(printf '%s' "$pass")
+}
+
+backup_one() {
+  local src="$1" name="$2" dest="$3" keep="$4"
+  local stamp out pattern
+  local tar_args=(--create --file - --exclude-caches --exclude-ignore="$IGNORE_FILE")
+
+  [ -d "$src" ] || die "not a directory: $src"
+  src=$(cd "$src" && pwd -P)
+  [ "$src" != / ] || die "refusing to back up /"
+  case "$(cd "$dest" && pwd -P)/" in
+    "$src"/*) die "destination $dest is inside $src" ;;
+  esac
+  name="${name:-$(basename "$src")}"
+  case "$name" in
+    */* | .*) die "bad name: $name" ;;
+  esac
+
+  while read -r pattern; do
+    tar_args+=(--exclude="$pattern")
+  done < <(expand_list "$DEFAULT_EXCLUDES:${BACKUP_EXCLUDE:-}")
+  tar_args+=(--directory "$(dirname "$src")" "$(basename "$src")")
+
+  stamp=$(date +%Y%m%d-%H%M)
+  out="$dest/$name-$stamp$SUFFIX"
+  tmp="$out.partial"
+  [ ! -e "$out" ] || die "$out exists, wait a minute"
+
+  echo "$src -> $out" >&2
+  tar "${tar_args[@]}" |
+    zstd -T0 -3 -q |
+    gpg_with_pass --symmetric --cipher-algo AES256 --compress-algo none --output "$tmp"
+  mv "$tmp" "$out"
+  tmp=""
+  (cd "$dest" && sha256sum "$(basename "$out")" >"$(basename "$out").sha256")
+  echo "done: $(du -h "$out" | cut -f1)" >&2
+
+  prune "$dest" "$name" "$keep"
+}
+
+prune() {
+  local dest="$1" name="$2" keep="$3" old
+  [ "$keep" -gt 0 ] || return 0
+  find "$dest" -maxdepth 1 -name "$name-$STAMP_GLOB$SUFFIX" -printf '%f\n' |
+    sort -r | tail -n "+$((keep + 1))" |
+    while read -r old; do
+      echo "removing old $old" >&2
+      rm -f "$dest/$old" "$dest/$old.sha256"
+    done
+}
+
+create() {
+  local dest="${BACKUP_DEST:-}" keep="${BACKUP_KEEP:-3}" name="" opt dirs=()
+  while getopts "o:k:n:h" opt; do
+    case "$opt" in
+      o) dest="$OPTARG" ;;
+      k) keep="$OPTARG" ;;
+      n) name="$OPTARG" ;;
+      h)
+        usage
+        exit 0
+        ;;
+      *) exit 1 ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  if [ $# -gt 0 ]; then
+    dirs=("$@")
+  elif [ -n "${BACKUP_SRC:-}" ]; then
+    mapfile -t dirs < <(expand_list "$BACKUP_SRC")
+  fi
+  [ ${#dirs[@]} -gt 0 ] || die "nothing to back up: pass a DIR or set BACKUP_SRC (see --help)"
+  [ -n "$dest" ] || die "no destination: pass -o DEST or set BACKUP_DEST (see --help)"
+  [[ "$keep" =~ ^[0-9]+$ ]] || die "KEEP must be a number: $keep"
+  [ -z "$name" ] || [ ${#dirs[@]} -eq 1 ] || die "-n works with one DIR only"
+
+  need tar zstd gpg sha256sum
+  dest=$(expand_home "$dest")
+  mkdir -p "$dest"
+  read_passphrase confirm
+
+  local dir
+  for dir in "${dirs[@]}"; do
+    backup_one "$(expand_home "$dir")" "$name" "$dest" "$keep"
+  done
+}
+
+decrypt_stream() {
+  need tar zstd gpg
+  read_passphrase
+  gpg_with_pass --decrypt "$1" | zstd -dq
+}
+
+restore() {
+  local file="${1:?usage: secure-backup restore FILE [DIR]}" dir="${2:-.}"
+  [ -f "$file" ] || die "no such file $file"
+  if [ -f "$file.sha256" ]; then
+    (cd "$(dirname "$file")" && sha256sum --quiet -c "$(basename "$file").sha256") || die "checksum mismatch"
+  fi
+  mkdir -p "$dir"
+  decrypt_stream "$file" | tar --extract --file - --directory "$dir"
+  echo "restored into $dir" >&2
+}
+
+list() {
+  local file="${1:?usage: secure-backup list FILE}"
+  [ -f "$file" ] || die "no such file $file"
+  decrypt_stream "$file" | tar --list --file -
+}
+
+show_config() {
+  echo "config file:     $CONFIG $([ -f "$CONFIG" ] || echo '(missing)')"
+  echo "BACKUP_DEST:     ${BACKUP_DEST:-(unset)}"
+  echo "BACKUP_SRC:      ${BACKUP_SRC:-(unset)}"
+  echo "BACKUP_KEEP:     ${BACKUP_KEEP:-3}"
+  echo "BACKUP_EXCLUDE:  ${BACKUP_EXCLUDE:-(none)} + ${DEFAULT_EXCLUDES}"
+  echo "BACKUP_PASSFILE: ${BACKUP_PASSFILE:-(prompt)}"
+}
+
+trap '[ -z "$tmp" ] || rm -f "$tmp"' EXIT
+load_config
+case "${1:-}" in
+  restore) restore "${@:2}" ;;
+  list) list "${@:2}" ;;
+  config) show_config ;;
+  help | --help) usage ;;
+  create) create "${@:2}" ;;
+  *) create "$@" ;;
+esac
