@@ -42,9 +42,11 @@ if status is-interactive
     abbr -a d docker
     abbr -a dc 'docker compose'
     abbr -a dps 'docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"'
-    abbr -a k kubectl
-    abbr -a kg 'kubectl get'
-    abbr -a kd 'kubectl describe'
+    if command -q kubectl
+        abbr -a k kubectl
+        abbr -a kg 'kubectl get'
+        abbr -a kd 'kubectl describe'
+    end
     abbr -a tf terraform
     abbr -a cat bat
     abbr -a bcp 'bat -p'
