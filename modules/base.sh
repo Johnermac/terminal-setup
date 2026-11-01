@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-group_info base "git curl wget unzip jq tree htop neovim ripgrep fd build toolchain"
+group_info base "git ssh curl wget unzip jq tree htop neovim ripgrep fd build toolchain"
 
 enable_paccache() {
   [ "$PM" = pacman ] || return 0
@@ -17,7 +17,7 @@ enable_paccache() {
 
 group_base() {
   step "base packages"
-  ensure_packages git curl wget unzip tar zstd ca-certificates gnupg less \
+  ensure_packages git curl wget unzip tar zstd ca-certificates gnupg less ssh \
     jq tree htop neovim build cmake ripgrep fd
 
   step "command shims"

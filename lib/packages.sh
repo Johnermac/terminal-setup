@@ -63,6 +63,14 @@ pkg_names() {
         brew) echo netcat ;;
       esac
       ;;
+    ssh)
+      case $PM in
+        apt | apk) echo openssh-client ;;
+        pacman) echo openssh ;;
+        dnf | zypper) echo openssh-clients ;;
+        brew) echo ;;
+      esac
+      ;;
     mtr)
       case $PM in apt) echo mtr-tiny ;; *) echo mtr ;; esac
       ;;
