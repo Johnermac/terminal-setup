@@ -34,7 +34,7 @@ function wt --description 'Git worktree per task with its own Claude window (wt 
                 end
             end
             if set -q TMUX
-                tmux new-window -n $task -c $dir claude
+                tmux new-window -n $task -c $dir claude --append-system-prompt 'When the task is done, commit your changes on this branch with a one-line conventional commit message.'
             else
                 cd $dir
             end
