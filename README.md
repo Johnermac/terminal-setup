@@ -21,7 +21,7 @@ and select **JetBrainsMono Nerd Font** in your terminal emulator.
 
 | Group | Contents |
 |---|---|
-| `base` | git curl wget unzip jq tree htop vim ripgrep fd compiler toolchain |
+| `base` | git curl wget unzip jq tree htop neovim ripgrep fd compiler toolchain |
 | `shell` | fish tmux fzf starship zoxide |
 | `cli` | gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin |
 | `langs` | go node python uv rust |

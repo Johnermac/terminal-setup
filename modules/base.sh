@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-group_info base "git curl wget unzip jq tree htop vim ripgrep fd build toolchain"
+group_info base "git curl wget unzip jq tree htop neovim ripgrep fd build toolchain"
 
 group_base() {
   step "base packages"
   ensure_packages git curl wget unzip tar zstd ca-certificates gnupg less \
-    jq tree htop vim build cmake ripgrep fd
+    jq tree htop neovim build cmake ripgrep fd
 
   step "command shims"
   run mkdir -p "$HOME/.local/bin"

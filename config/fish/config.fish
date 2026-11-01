@@ -3,7 +3,8 @@ if status is-interactive
 
     fish_add_path -g $HOME/.local/bin $HOME/.cargo/bin $HOME/go/bin /usr/local/go/bin
 
-    set -gx EDITOR vim
+    set -gx EDITOR nvim
+    set -gx SUDO_EDITOR nvim
     set -gx PAGER less
 
     set -gx FZF_DEFAULT_OPTS '
