@@ -27,7 +27,7 @@ and select **JetBrainsMono Nerd Font** in your terminal emulator.
 | `langs` | go node python uv rust |
 | `cloud` | docker kubectl helm k9s terraform aws granted |
 | `sec` | nmap tcpdump dig whois socat openssl trivy syft gitleaks hadolint cosign semgrep checkov detect-secrets |
-| `config` | dotfile symlinks, fisher, tpm, default shell |
+| `config` | dotfile symlinks, fisher, tpm, LazyVim, default shell |
 
 Opt-in with `--with`:
 
@@ -71,6 +71,8 @@ patches/        source patches applied by opt-in groups
 | `config/bin/tmux-git-title` | `~/.local/bin/tmux-git-title` |
 | `config/bin/claude-tmux` | `~/.local/bin/claude-tmux` |
 | `config/bin/claude-guard` | `~/.local/bin/claude-guard` |
+| `config/bin/claude-toast` | `~/.local/bin/claude-toast` |
+| `config/nvim/lua/plugins/claudecode.lua` | `~/.config/nvim/lua/plugins/claudecode.lua` |
 | `config/bin/secure-backup` | `~/.local/bin/secure-backup` |
 | `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
 | `config/claude/settings.base.json` | `permissions.deny` merged into `~/.claude/settings.json` |
@@ -115,6 +117,7 @@ fish
 | `alt+c` | dir jump |
 | `dev <name>` | attach-or-create project session (edit/run/git/claude) |
 | `dev` | pick session via fzf |
+| `wt <task> [base]` | git worktree on branch `wt/<task>` in `<repo>.wt/<task>`, opened in a new tmux window running Claude (outside tmux it only `cd`s there); `wt ls` lists, `wt rm <task>` removes the worktree and the merged branch |
 | `ports` / `serve [port]` | listening sockets / http server in cwd |
 | `ll` / `lt` | eza long list with git status / tree |
 | `assume [profile]` | export AWS credentials for a profile into this shell (granted); `assume -c` opens the console, `assume --un` drops back |
@@ -142,6 +145,8 @@ tmux, prefix `C-a`
 ## Claude notifications
 
 When Claude finishes or waits for a permission answer in a pane you are not looking at, tmux flashes `✻ session:window` and the status bar shows a pending count. Visiting the pane or sending a prompt there clears it.
+
+On WSL, the same events raise a Windows toast when Windows Terminal is not the foreground window. Inside the terminal only the tmux icons change.
 
 Each pane's border title shows Claude's state: `●` working, `?` waiting for permission, `✓` finished and not yet visited. Window tabs show the same icon for any pane in that window. Exiting Claude clears it.
 
@@ -230,10 +235,12 @@ The config enables it only when the running tmux has the `pane-border-boxes` opt
 
 ```sh
 find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-title \
-  ~/.local/bin/claude-tmux ~/.local/bin/claude-guard ~/.local/bin/secure-backup \
+  ~/.local/bin/claude-tmux ~/.local/bin/claude-guard ~/.local/bin/claude-toast ~/.local/bin/secure-backup \
+  ~/.config/nvim/lua/plugins/claudecode.lua \
   -maxdepth 2 -lname "$PWD/*" -delete
 git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"
+powershell.exe -Command 'Remove-Item HKCU:\Software\Classes\AppUserModelId\ClaudeCode.Toast'
 rm -f ~/.local/bin/tmux ~/.local/share/man/man1/tmux.1 ~/.local/share/terminal-setup/tmux-boxes.stamp
 ```
 

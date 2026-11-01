@@ -22,6 +22,10 @@ popup    prefix G               lazygit
 popup    prefix D               lazydocker
 claude   prefix j               jump to Claude pane waiting for input
 claude   prefix J               pick a Claude pane
+claude   wt <task> [base]       worktree + branch wt/<task> + Claude window
+claude   wt rm <task>           remove worktree and merged branch
+nvim     Space a c              toggle Claude in nvim
+nvim     Space a a / a d        accept / deny Claude diff
 copy     prefix [               copy mode
 copy     prefix /               search scrollback
 copy     v / y                  select / copy (copy mode)
