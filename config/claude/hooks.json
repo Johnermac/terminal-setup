@@ -1,5 +1,6 @@
 {
-  "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-guard", "timeout": 5 }] }],
+  "SessionStart": [{ "hooks": [{ "type": "command", "command": "sh \"$HOME/.claude/hooks/writing-rules.sh\"", "timeout": 5 }] }],
+  "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "sh \"$HOME/.claude/hooks/review-gates.sh\"", "timeout": 10 }, { "type": "command", "command": "$HOME/.local/bin/claude-guard", "timeout": 5 }] }],
   "Stop": [{ "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-tmux notify", "timeout": 5 }] }],
   "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-tmux notify", "timeout": 5 }] }],
   "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "$HOME/.local/bin/claude-tmux busy", "timeout": 5 }] }],

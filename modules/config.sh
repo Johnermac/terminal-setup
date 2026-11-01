@@ -35,6 +35,11 @@ link_dotfiles() {
   link "$REPO_DIR/config/bat/config" "$HOME/.config/bat/config"
   link "$REPO_DIR/config/btop/themes/catppuccin_mocha.theme" "$HOME/.config/btop/themes/catppuccin_mocha.theme"
   link "$REPO_DIR/config/lazygit/config.yml" "$HOME/.config/lazygit/config.yml"
+  link "$REPO_DIR/config/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  link "$REPO_DIR/config/claude/writing-rules.md" "$HOME/.claude/writing-rules.md"
+  for f in "$REPO_DIR"/config/claude/hooks/*.sh; do
+    link "$f" "$HOME/.claude/hooks/$(basename "$f")"
+  done
 }
 
 link_claude_hooks() {
@@ -50,7 +55,7 @@ link_claude_hooks() {
 
   tmp=$(mktemp)
   jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" --slurpfile b "$REPO_DIR/config/claude/settings.base.json" '
-    .hooks = ((.hooks // {}) | with_entries(.value |= map(select([.hooks[]?.command] | any(test("claude-tmux|claude-guard")) | not))) | with_entries(select(.value | length > 0)))
+    .hooks = ((.hooks // {}) | with_entries(.value |= map(select([.hooks[]?.command] | any(test("claude-tmux|claude-guard|review-gates|writing-rules")) | not))) | with_entries(select(.value | length > 0)))
     | reduce ($h[0] | to_entries[]) as $e (.; .hooks[$e.key] = ((.hooks[$e.key] // []) + $e.value))
     | .permissions.deny = (((.permissions.deny // []) + $b[0].permissions.deny) | unique)
   ' "$settings" >"$tmp"

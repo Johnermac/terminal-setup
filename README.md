@@ -75,6 +75,9 @@ patches/        source patches applied by opt-in groups
 | `config/nvim/lua/plugins/claudecode.lua` | `~/.config/nvim/lua/plugins/claudecode.lua` |
 | `config/bin/secure-backup` | `~/.local/bin/secure-backup` |
 | `config/claude/hooks.json` | merged into `~/.claude/settings.json` hooks |
+| `config/claude/hooks/*.sh` | `~/.claude/hooks/` (review gates, writing rules) |
+| `config/claude/CLAUDE.md` | `~/.claude/CLAUDE.md` |
+| `config/claude/writing-rules.md` | `~/.claude/writing-rules.md` |
 | `config/claude/settings.base.json` | `permissions.deny` merged into `~/.claude/settings.json` |
 | `config/atuin/config.toml` | `~/.config/atuin/config.toml` |
 
@@ -236,7 +239,7 @@ The config enables it only when the running tmux has the `pane-border-boxes` opt
 ```sh
 find ~/.config/fish ~/.config/starship.toml ~/.tmux.conf ~/.local/bin/tmux-git-title \
   ~/.local/bin/claude-tmux ~/.local/bin/claude-guard ~/.local/bin/claude-toast ~/.local/bin/secure-backup \
-  ~/.config/nvim/lua/plugins/claudecode.lua \
+  ~/.config/nvim/lua/plugins/claudecode.lua ~/.claude/CLAUDE.md ~/.claude/writing-rules.md ~/.claude/hooks \
   -maxdepth 2 -lname "$PWD/*" -delete
 git config --global --unset-all include.path "$HOME/.config/git/terminal-setup.inc"
 chsh -s "$(command -v bash)"
