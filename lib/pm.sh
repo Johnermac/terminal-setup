@@ -19,7 +19,7 @@ pm_refresh() {
   PM_REFRESHED=1
   case $PM in
     apt) sudo_run apt-get update ;;
-    pacman) sudo_run pacman -Sy --noconfirm ;;
+    pacman) sudo_run pacman -Syu --noconfirm ;;
     zypper) sudo_run zypper --non-interactive refresh ;;
     apk) sudo_run apk update ;;
     brew) run brew update ;;
