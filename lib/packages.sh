@@ -39,7 +39,7 @@ pkg_names() {
     python)
       case $PM in
         apt) echo python3 python3-pip python3-venv ;;
-        pacman) echo python python-pip ;;
+        pacman) echo python ;;
         apk) echo python3 py3-pip ;;
         brew) echo python ;;
         *) echo python3 python3-pip ;;
