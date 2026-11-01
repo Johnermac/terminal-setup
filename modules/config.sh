@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-group_info config "dotfile symlinks, fisher, tpm, default shell"
+group_info config "dotfile symlinks, fisher, tpm, LazyVim, default shell"
+
+LAZYVIM_MIN_NVIM=0.11.2
 
 link_dotfiles() {
   if [ -f "$HOME/.config/fish/local.fish" ]; then
@@ -114,6 +116,38 @@ apply_btop_theme() {
   fi
 }
 
+install_lazyvim() {
+  have nvim || {
+    warn "nvim not installed"
+    return
+  }
+
+  local version
+  version=$(nvim --version | head -1 | sed 's/^NVIM v//')
+  version_ge "$version" "$LAZYVIM_MIN_NVIM" || {
+    warn "nvim $version is older than $LAZYVIM_MIN_NVIM; skipping LazyVim"
+    return
+  }
+
+  if [ -d "$HOME/.config/nvim" ]; then
+    skip "$HOME/.config/nvim"
+  else
+    run git clone --depth 1 https://github.com/LazyVim/starter "$HOME/.config/nvim"
+    run rm -rf "$HOME/.config/nvim/.git"
+    ok "LazyVim starter"
+  fi
+
+  link_lazyvim_plugins
+}
+
+link_lazyvim_plugins() {
+  grep -qs LazyVim "$HOME/.config/nvim/lua/config/lazy.lua" || {
+    warn "$HOME/.config/nvim is not a LazyVim config; skipping claudecode.nvim"
+    return
+  }
+  link "$REPO_DIR/config/nvim/lua/plugins/claudecode.lua" "$HOME/.config/nvim/lua/plugins/claudecode.lua"
+}
+
 install_tpm() {
   have tmux || {
     warn "tmux not installed"
@@ -169,6 +203,8 @@ group_config() {
   apply_btop_theme
   step "fish plugins"
   install_fisher
+  step "neovim"
+  install_lazyvim
   step "tmux plugins"
   install_tpm
   step "default shell"
