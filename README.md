@@ -23,7 +23,7 @@ and select **JetBrainsMono Nerd Font** in your terminal emulator.
 |---|---|
 | `base` | git curl wget unzip jq tree htop neovim ripgrep fd compiler toolchain |
 | `shell` | fish tmux fzf starship zoxide |
-| `cli` | gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin |
+| `cli` | gh glab lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin |
 | `langs` | go node python uv rust |
 | `cloud` | docker terraform aws granted |
 | `sec` | nmap tcpdump dig whois socat openssl trivy syft gitleaks hadolint cosign semgrep checkov detect-secrets |
@@ -121,7 +121,7 @@ fish
 | `alt+c` | dir jump |
 | `dev <name>` | attach-or-create project session (edit/run/git/claude) |
 | `dev` | pick session via fzf |
-| `wt <task> [base]` | git worktree on branch `wt/<task>` in `<repo>.wt/<task>`, opened in a new tmux window running Claude (outside tmux it only `cd`s there); `wt ls` lists, `wt rm <task>` removes the worktree and the merged branch |
+| `wt <task> [base]` | git worktree on branch `wt/<task>` in `<repo>.wt/<task>`, opened in a new tmux window running Claude, told to commit when done (outside tmux it only `cd`s there); `wt ls` lists, `wt rm <task>` removes the worktree and the merged branch |
 | `ports` / `serve [port]` | listening sockets / http server in cwd |
 | `ll` / `lt` | eza long list with git status / tree |
 | `assume [profile]` | export AWS credentials for a profile into this shell (granted); `assume -c` opens the console, `assume --un` drops back |

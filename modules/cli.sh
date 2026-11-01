@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-group_info cli "gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin"
+group_info cli "gh glab lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin"
 
 install_lazydocker() {
   native_pkg lazydocker && return
@@ -10,6 +10,34 @@ install_lazydocker() {
   }
   run_sh 'curl -fsSL https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | bash'
   ok "lazydocker"
+}
+
+install_glab() {
+  native_pkg glab && return
+  have glab && {
+    skip "glab"
+    return
+  }
+  local a json v tmp
+  a=$(arch_go)
+  [ "$a" = unsupported ] && {
+    warn "glab: unsupported arch"
+    return
+  }
+  json=$(fetch 'https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases/permalink/latest') || {
+    warn "glab: release lookup failed"
+    return
+  }
+  v=$(printf '%s' "$json" | sed -n 's/.*"tag_name":"v\{0,1\}\([^"]*\)".*/\1/p')
+  [ -n "$v" ] || {
+    warn "glab: release lookup failed"
+    return
+  }
+  tmp=$(mktmp)
+  run_sh "curl -fsSL 'https://gitlab.com/gitlab-org/cli/-/releases/v${v}/downloads/glab_${v}_$(os_name)_${a}.tar.gz' | tar xz -C '$tmp'"
+  install_bin "$tmp/bin/glab"
+  run rm -rf "$tmp"
+  ok "glab $v"
 }
 
 install_claude() {
@@ -32,6 +60,7 @@ group_cli() {
   step "cli tools"
   ensure_packages direnv
   release_bin gh cli/cli amd64/arm64 'v{v}/gh_{v}_{os}_{arch}.tar.gz' 'gh_{v}_{os}_{arch}/bin/gh'
+  install_glab
   release_bin lazygit jesseduffield/lazygit x86_64/arm64 'v{v}/lazygit_{v}_{Os}_{arch}.tar.gz' lazygit
   install_lazydocker
   drop_batcat_shim
