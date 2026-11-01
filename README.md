@@ -25,7 +25,7 @@ and select **JetBrainsMono Nerd Font** in your terminal emulator.
 | `shell` | fish tmux fzf starship zoxide |
 | `cli` | gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin |
 | `langs` | go node python uv rust |
-| `cloud` | docker kubectl helm k9s terraform aws granted |
+| `cloud` | docker terraform aws granted |
 | `sec` | nmap tcpdump dig whois socat openssl trivy syft gitleaks hadolint cosign semgrep checkov detect-secrets |
 | `config` | dotfile symlinks, fisher, tpm, LazyVim, default shell |
 
@@ -33,6 +33,7 @@ Opt-in with `--with`:
 
 | Group | Contents |
 |---|---|
+| `k8s` | kubectl helm k9s |
 | `pentest` | ffuf gobuster httpx subfinder nuclei katana dnsx assetfinder waybackurls sqlmap |
 | `wordlists` | SecLists (~1 GB) |
 | `ruby` | rbenv, ruby-build, latest stable ruby (compiles from source) |

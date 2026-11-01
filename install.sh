@@ -13,7 +13,7 @@ group_info() { GROUP_INFO[$1]=$2; }
 for m in "$REPO_DIR"/modules/*.sh; do . "$m"; done
 
 DEFAULT_GROUPS="base shell cli langs cloud sec config"
-OPTIONAL_GROUPS="pentest wordlists ruby java gcloud tmux-boxes"
+OPTIONAL_GROUPS="k8s pentest wordlists ruby java gcloud tmux-boxes"
 SKIP_CHSH=0
 GROUP_LIST=$DEFAULT_GROUPS
 WITH=""
