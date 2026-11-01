@@ -33,6 +33,18 @@ install_go() {
   ok "$want in /usr/local/go"
 }
 
+link_node_bins() {
+  local dir=/usr/local/lib/nodejs/bin b
+  for b in "$dir"/*; do
+    [ -e "$b" ] || continue
+    [ "$(readlink "/usr/local/bin/${b##*/}")" = "$b" ] || sudo_run ln -sf "$b" "/usr/local/bin/${b##*/}"
+  done
+  for b in /usr/local/bin/*; do
+    [ -L "$b" ] && [ ! -e "$b" ] || continue
+    case $(readlink "$b") in "$dir"/*) sudo_run rm -f "$b" ;; esac
+  done
+}
+
 install_node() {
   local want a tmp
   a=$(arch_as x64 arm64)
@@ -58,6 +70,7 @@ install_node() {
 
   if have node && [ "$(node --version)" = "$want" ]; then
     skip "node $want"
+    link_node_bins
     return
   fi
 
@@ -66,10 +79,7 @@ install_node() {
   sudo_run rm -rf /usr/local/lib/nodejs
   sudo_run mkdir -p /usr/local/lib/nodejs
   sudo_run tar -xJf "$tmp/node.tar.xz" -C /usr/local/lib/nodejs --strip-components=1
-  local b
-  for b in node npm npx corepack; do
-    sudo_run ln -sf "/usr/local/lib/nodejs/bin/$b" "/usr/local/bin/$b"
-  done
+  link_node_bins
   run rm -rf "$tmp"
   ok "node $want"
 }
