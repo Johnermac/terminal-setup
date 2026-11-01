@@ -37,6 +37,9 @@ case "$1" in
     p=$TMUX_PANE
     event=$(jq -r '.hook_event_name // empty' 2>/dev/null)
     viewing=$(tmux display -p -t "$p" '#{&&:#{session_attached},#{&&:#{window_active},#{pane_active}}}')
+    title="Finished"
+    [ "$event" = Notification ] && title="Needs input"
+    ("$(dirname "$0")/claude-toast" "$title" "$(pane_label "$p")" >/dev/null 2>&1 &)
     if [ "$event" = Notification ]; then
       set_state "$p" wait
       mark="✻?"

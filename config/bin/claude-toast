@@ -1,0 +1,23 @@
+#!/bin/sh
+
+grep -qi microsoft /proc/version 2>/dev/null || exit 0
+command -v powershell.exe >/dev/null 2>&1 || exit 0
+
+CLAUDE_TOAST_TITLE=$1 CLAUDE_TOAST_BODY=$2 \
+  WSLENV="${WSLENV:+$WSLENV:}CLAUDE_TOAST_TITLE:CLAUDE_TOAST_BODY" \
+  powershell.exe -NoProfile -NonInteractive -Command - <<'PS'
+Add-Type -Namespace ClaudeToast -Name Win32 -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);'
+$fgPid = 0
+[void][ClaudeToast.Win32]::GetWindowThreadProcessId([ClaudeToast.Win32]::GetForegroundWindow(), [ref]$fgPid)
+if ((Get-Process -Id $fgPid -ErrorAction SilentlyContinue).ProcessName -eq 'WindowsTerminal') { exit }
+[void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
+$xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
+$lines = $xml.GetElementsByTagName('text')
+[void]$lines.Item(0).AppendChild($xml.CreateTextNode($env:CLAUDE_TOAST_TITLE))
+[void]$lines.Item(1).AppendChild($xml.CreateTextNode($env:CLAUDE_TOAST_BODY))
+$appId = 'ClaudeCode.Toast'
+$appKey = "HKCU:\Software\Classes\AppUserModelId\$appId"
+New-Item -Path $appKey -Force | Out-Null
+New-ItemProperty -Path $appKey -Name DisplayName -Value 'Claude Code' -PropertyType String -Force | Out-Null
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appId).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
+PS
