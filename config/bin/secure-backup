@@ -185,12 +185,16 @@ create() {
 }
 
 decrypt_verified() {
-  local file="$1" out="$2" gpg_status
+  local file="$1" out="$2" gpg_status required
   read_passphrase
   gpg_status=$(gpg_with_pass --status-fd 1 --decrypt --output "$out" "$file") ||
     die "cannot decrypt $file"
-  if ! grep -q '^\[GNUPG:\] DECRYPTION_OKAY' <<<"$gpg_status" || ! grep -q '^\[GNUPG:\] GOODMDC' <<<"$gpg_status"; then
-    die "$file is not an authenticated encrypted archive"
+  for required in NEED_PASSPHRASE_SYM DECRYPTION_OKAY GOODMDC; do
+    grep -q "^\[GNUPG:\] $required" <<<"$gpg_status" ||
+      die "$file is not an archive encrypted with the backup passphrase"
+  done
+  if grep -q '^\[GNUPG:\] ENC_TO' <<<"$gpg_status"; then
+    die "$file is encrypted to a public key, not with the backup passphrase"
   fi
 }
 
