@@ -100,7 +100,7 @@ gpg_with_pass() {
 
 backup_one() {
   local src="$1" name="$2" dest="$3" keep="$4"
-  local stamp out pattern
+  local stamp out pattern pipe_status
   local tar_args=(--create --file - --exclude-caches --exclude-ignore="$IGNORE_FILE")
 
   [ -d "$src" ] || die "not a directory: $src"
@@ -125,9 +125,16 @@ backup_one() {
   [ ! -e "$out" ] || die "$out exists, wait a minute"
 
   echo "$src -> $out" >&2
+  set +e
   tar "${tar_args[@]}" |
     zstd -T0 -3 -q |
     gpg_with_pass --symmetric --cipher-algo AES256 --compress-algo none --output "$tmp"
+  pipe_status=("${PIPESTATUS[@]}")
+  set -e
+  if [ "${pipe_status[0]}" -gt 1 ] || [ "${pipe_status[1]}" -ne 0 ] || [ "${pipe_status[2]}" -ne 0 ]; then
+    die "backup of $src failed"
+  fi
+  [ "${pipe_status[0]}" -eq 0 ] || echo "warning: files changed while reading $src, archive kept" >&2
   mv "$tmp" "$out"
   tmp=""
   (cd "$dest" && sha256sum "$(basename "$out")" >"$(basename "$out").sha256")
