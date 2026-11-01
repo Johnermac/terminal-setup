@@ -97,7 +97,7 @@ pkg_names() {
     terraform)
       case $PM in brew) echo ;; *) echo terraform ;; esac
       ;;
-    grype | hadolint | granted)
+    hadolint | granted)
       case $PM in pacman) echo ;; *) echo "$1" ;; esac
       ;;
     *)

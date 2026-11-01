@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-group_info sec "nmap tcpdump dig whois socat openssl trivy grype syft gitleaks hadolint cosign semgrep checkov detect-secrets"
+group_info sec "nmap tcpdump dig whois socat openssl trivy syft gitleaks hadolint cosign semgrep checkov detect-secrets"
 
 install_trivy() {
   native_pkg trivy && return
@@ -43,7 +43,6 @@ group_sec() {
 
   step "supply chain scanners"
   install_trivy
-  install_anchore grype
   install_anchore syft
 
   step "secrets and lint"

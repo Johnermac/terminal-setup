@@ -26,7 +26,7 @@ and select **JetBrainsMono Nerd Font** in your terminal emulator.
 | `cli` | gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin |
 | `langs` | go node python uv rust |
 | `cloud` | docker kubectl helm k9s terraform aws granted |
-| `sec` | nmap tcpdump dig whois socat openssl trivy grype syft gitleaks hadolint cosign semgrep checkov detect-secrets |
+| `sec` | nmap tcpdump dig whois socat openssl trivy syft gitleaks hadolint cosign semgrep checkov detect-secrets |
 | `config` | dotfile symlinks, fisher, tpm, default shell |
 
 Opt-in with `--with`:
