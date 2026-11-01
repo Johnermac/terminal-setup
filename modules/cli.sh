@@ -3,7 +3,7 @@
 group_info cli "gh lazygit lazydocker bat delta yq direnv claude eza xh fx dust btop atuin"
 
 install_lazydocker() {
-  brew_pkg lazydocker && return
+  native_pkg lazydocker && return
   have lazydocker && {
     skip "lazydocker"
     return

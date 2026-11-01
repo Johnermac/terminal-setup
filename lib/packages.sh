@@ -80,7 +80,25 @@ pkg_names() {
       case $PM in brew) echo ;; *) echo ca-certificates ;; esac
       ;;
     delta)
-      case $PM in brew) echo git-delta ;; *) echo delta ;; esac
+      case $PM in brew | pacman) echo git-delta ;; *) echo delta ;; esac
+      ;;
+    gh)
+      case $PM in pacman) echo github-cli ;; *) echo gh ;; esac
+      ;;
+    yq)
+      case $PM in pacman) echo go-yq ;; *) echo yq ;; esac
+      ;;
+    awscli)
+      case $PM in pacman) echo aws-cli-v2 ;; *) echo awscli ;; esac
+      ;;
+    kubectl)
+      case $PM in brew) echo kubernetes-cli ;; *) echo kubectl ;; esac
+      ;;
+    terraform)
+      case $PM in brew) echo ;; *) echo terraform ;; esac
+      ;;
+    grype | hadolint | granted)
+      case $PM in pacman) echo ;; *) echo "$1" ;; esac
       ;;
     *)
       echo "$1"

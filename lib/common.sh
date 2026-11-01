@@ -97,8 +97,9 @@ release_fill() {
 
 runs_ok() { "$1" --version >/dev/null 2>&1; }
 
-brew_pkg() {
-  [ "$PM" = brew ] || return 1
+native_pkg() {
+  case $PM in brew | pacman) ;; *) return 1 ;; esac
+  [ -n "$(pkg_names "$1")" ] || return 1
   ensure_packages "$1"
 }
 
@@ -111,7 +112,7 @@ release_bin() {
   local tool=$1 repo=$2 arch_names=$3 path=$4 version arch url tmp member
   shift 4
 
-  brew_pkg "$tool" && return
+  native_pkg "$tool" && return
   if "$installed_check" "$tool"; then
     skip "$tool"
     return

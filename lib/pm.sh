@@ -66,6 +66,6 @@ ensure_packages() {
     return 0
   fi
 
-  pm_install "${missing[@]}"
+  pm_install "${missing[@]}" || return 1
   ok "installed: ${missing[*]}"
 }

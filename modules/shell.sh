@@ -4,6 +4,26 @@ group_info shell "fish tmux fzf starship zoxide"
 
 FZF_MIN_VERSION=0.48.0
 
+install_starship() {
+  native_pkg starship && return
+  have starship && {
+    skip "$(starship --version 2>/dev/null | head -1)"
+    return
+  }
+  run_sh 'curl -fsSL https://starship.rs/install.sh | sh -s -- -y'
+  ok "starship"
+}
+
+install_zoxide() {
+  native_pkg zoxide && return
+  have zoxide && {
+    skip "$(zoxide --version 2>/dev/null)"
+    return
+  }
+  run_sh 'curl -fsSL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh'
+  ok "zoxide"
+}
+
 group_shell() {
   step "fish + tmux"
   ensure_packages fish tmux
@@ -31,18 +51,8 @@ group_shell() {
   fi
 
   step "starship"
-  if have starship; then
-    skip "$(starship --version 2>/dev/null | head -1)"
-  else
-    run_sh 'curl -fsSL https://starship.rs/install.sh | sh -s -- -y'
-    ok "starship"
-  fi
+  install_starship
 
   step "zoxide"
-  if have zoxide; then
-    skip "$(zoxide --version 2>/dev/null)"
-  else
-    run_sh 'curl -fsSL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh'
-    ok "zoxide"
-  fi
+  install_zoxide
 }

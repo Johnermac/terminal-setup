@@ -3,7 +3,7 @@
 group_info sec "nmap tcpdump dig whois socat openssl trivy grype syft gitleaks hadolint cosign semgrep checkov detect-secrets"
 
 install_trivy() {
-  brew_pkg trivy && return
+  native_pkg trivy && return
   have trivy && {
     skip "trivy"
     return
@@ -14,7 +14,7 @@ install_trivy() {
 
 install_anchore() {
   local tool=$1
-  brew_pkg "$tool" && return
+  native_pkg "$tool" && return
   have "$tool" && {
     skip "$tool"
     return

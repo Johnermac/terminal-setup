@@ -32,6 +32,7 @@ install_docker() {
 }
 
 install_kubectl() {
+  native_pkg kubectl && return
   have kubectl && {
     skip "kubectl"
     return
@@ -54,6 +55,7 @@ install_kubectl() {
 }
 
 install_helm() {
+  native_pkg helm && return
   have helm && {
     skip "helm"
     return
@@ -63,6 +65,7 @@ install_helm() {
 }
 
 install_terraform() {
+  native_pkg terraform && return
   have terraform && {
     skip "terraform"
     return
@@ -87,7 +90,7 @@ install_terraform() {
 }
 
 install_awscli() {
-  brew_pkg awscli && return
+  native_pkg awscli && return
   have aws && {
     skip "aws"
     return
