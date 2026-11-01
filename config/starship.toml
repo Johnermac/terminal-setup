@@ -1,3 +1,4 @@
+scan_timeout = 100
 format = "$character"
 right_format = "${custom.aws_prod}$aws$kubernetes$terraform"
 
