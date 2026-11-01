@@ -102,6 +102,8 @@ import_atuin_history() {
   have atuin || return 0
   if [ -f "$HOME/.local/share/atuin/history.db" ]; then
     skip "atuin history"
+  elif [ ! -s "${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history" ]; then
+    skip "no fish history to import"
   else
     run atuin import fish
     ok "fish history imported into atuin"
