@@ -206,9 +206,11 @@ BACKUP_KEEP=3
 
 `secure-backup config` shows the resolved settings, `secure-backup --help` lists all of them. Flags override environment variables with the same names, which override the file.
 
-Skipped automatically: `node_modules`, virtualenvs, Python caches, `.terraform`, `.next`, and any directory with a `CACHEDIR.TAG`. To skip more inside one directory, add a `.backupignore` there with one pattern per line. It applies to that directory only.
+Skipped automatically: `node_modules`, virtualenvs, Python caches, `.terraform`, `.next`, and any directory with a `CACHEDIR.TAG`. To skip more, add a `.backupignore` to a directory with one name pattern per line. It applies to that directory and everything below it. Patterns match names, not paths. For a path relative to the backed-up folder, use `BACKUP_EXCLUDE=<folder name>/<path>`.
 
-On a machine without this repo, `gpg`, `zstd` and `tar` are enough:
+`restore` and `list` decrypt into a private temp directory and read the archive only after gpg confirms it was encrypted with the passphrase and not modified. `restore` keeps that temp copy inside the target directory, so the target needs free space for one more compressed copy. The `.sha256` file only catches disk corruption, since anyone who can replace an archive can replace its checksum too.
+
+On a machine without this repo, `gpg`, `zstd` and `tar` are enough. Check that gpg prints `AES256.CFB encrypted data` and asks for the passphrase. If it does not, the file is not your backup. This pipe extracts while gpg is still checking, so a modified file can be partly extracted before gpg reports it:
 
 ```sh
 gpg -d projects-<date>.tar.zst.gpg | tar --zstd -xf - -C ~/

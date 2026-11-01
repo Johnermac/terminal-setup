@@ -7,6 +7,7 @@ IGNORE_FILE=".backupignore"
 SUFFIX=".tar.zst.gpg"
 STAMP_GLOB="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]"
 tmp=""
+workdir=""
 
 usage() {
   cat <<EOF
@@ -27,7 +28,8 @@ Settings come from flags, then environment, then $CONFIG:
   BACKUP_PASSFILE=~/.backup-pass     read the passphrase from a file
 
 Always skipped: ${DEFAULT_EXCLUDES//:/ }, directories with CACHEDIR.TAG,
-and the patterns listed in any $IGNORE_FILE file (applies to its own directory).
+and names matching a line of any $IGNORE_FILE (applies to that directory and
+everything below it).
 EOF
 }
 
@@ -182,10 +184,24 @@ create() {
   done
 }
 
-decrypt_stream() {
-  need tar zstd gpg
+decrypt_verified() {
+  local file="$1" out="$2" gpg_status
   read_passphrase
-  gpg_with_pass --decrypt "$1" | zstd -dq
+  gpg_status=$(gpg_with_pass --status-fd 1 --decrypt --output "$out" "$file") ||
+    die "cannot decrypt $file"
+  if ! grep -q '^\[GNUPG:\] DECRYPTION_OKAY' <<<"$gpg_status" || ! grep -q '^\[GNUPG:\] GOODMDC' <<<"$gpg_status"; then
+    die "$file is not an authenticated encrypted archive"
+  fi
+}
+
+tar_verified() {
+  local file="$1" scratch_parent="$2"
+  shift 2
+  need tar zstd gpg
+  [ -f "$file" ] || die "no such file $file"
+  workdir=$(mktemp -d "$scratch_parent/.secure-backup.XXXXXX")
+  decrypt_verified "$file" "$workdir/archive.tar.zst"
+  zstd -dq <"$workdir/archive.tar.zst" | tar "$@" --file -
 }
 
 restore() {
@@ -195,14 +211,12 @@ restore() {
     (cd "$(dirname "$file")" && sha256sum --quiet -c "$(basename "$file").sha256") || die "checksum mismatch"
   fi
   mkdir -p "$dir"
-  decrypt_stream "$file" | tar --extract --file - --directory "$dir"
+  tar_verified "$file" "$dir" --extract --directory "$dir"
   echo "restored into $dir" >&2
 }
 
 list() {
-  local file="${1:?usage: secure-backup list FILE}"
-  [ -f "$file" ] || die "no such file $file"
-  decrypt_stream "$file" | tar --list --file -
+  tar_verified "${1:?usage: secure-backup list FILE}" "${TMPDIR:-/tmp}" --list
 }
 
 show_config() {
@@ -214,7 +228,12 @@ show_config() {
   echo "BACKUP_PASSFILE: ${BACKUP_PASSFILE:-(prompt)}"
 }
 
-trap '[ -z "$tmp" ] || rm -f "$tmp"' EXIT
+cleanup() {
+  [ -z "$tmp" ] || rm -f "$tmp"
+  [ -z "$workdir" ] || rm -rf "$workdir"
+}
+
+trap cleanup EXIT
 load_config
 case "${1:-}" in
   restore) restore "${@:2}" ;;
