@@ -1,0 +1,32 @@
+#!/bin/sh
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/claude-usage"
+chained="$HOME/.claude/statusline-next"
+
+record() {
+  input=$(cat)
+  usage=$(printf '%s' "$input" | jq -r '.rate_limits.seven_day // empty | "\(.used_percentage | round) \(.resets_at | floor)"' 2>/dev/null)
+  if [ -n "$usage" ] && [ "$usage" != "$(cat "$cache" 2>/dev/null)" ]; then
+    mkdir -p "$(dirname "$cache")"
+    printf '%s\n' "$usage" >"$cache.$$" && mv -f "$cache.$$" "$cache"
+    [ -n "$TMUX" ] && tmux refresh-client -S 2>/dev/null
+  fi
+  [ -f "$chained" ] && [ ! -L "$chained" ] && printf '%s' "$input" | sh -c "$(cat "$chained")"
+}
+
+show() {
+  [ -f "$cache" ] && [ ! -L "$cache" ] || return 0
+  read -r pct resets <"$cache" || return 0
+  case "$pct$resets" in '' | *[!0-9]*) return 0 ;; esac
+  [ "$resets" -gt "$(date +%s)" ] || pct=0
+  printf '%s%%' "$pct"
+}
+
+case "$1" in
+  statusline) record ;;
+  tmux) show ;;
+  *)
+    echo "usage: claude-usage statusline|tmux" >&2
+    exit 1
+    ;;
+esac

@@ -53,22 +53,34 @@ link_claude_hooks() {
   [ -f "$settings" ] || run sh -c "echo '{}' > '$settings'"
   [ "$DRY_RUN" = 1 ] && return
 
+  local usage="\$HOME/.local/bin/claude-usage statusline"
+  local prev
+  prev=$(jq -r '.statusLine.command // empty' "$settings")
+  case "$prev" in
+    "" | *claude-usage*) ;;
+    *)
+      printf '%s\n' "$prev" >"$HOME/.claude/statusline-next"
+      ok "chained previous statusline -> ~/.claude/statusline-next"
+      ;;
+  esac
+
   tmp=$(mktemp)
-  jq --slurpfile h "$REPO_DIR/config/claude/hooks.json" --slurpfile b "$REPO_DIR/config/claude/settings.base.json" '
+  jq --arg usage "$usage" --slurpfile h "$REPO_DIR/config/claude/hooks.json" --slurpfile b "$REPO_DIR/config/claude/settings.base.json" '
     .hooks = ((.hooks // {}) | with_entries(.value |= map(select([.hooks[]?.command] | any(test("claude-tmux|claude-guard|review-gates|writing-rules")) | not))) | with_entries(select(.value | length > 0)))
     | reduce ($h[0] | to_entries[]) as $e (.; .hooks[$e.key] = ((.hooks[$e.key] // []) + $e.value))
     | .permissions.deny = (((.permissions.deny // []) + $b[0].permissions.deny) | unique)
+    | .statusLine = {type: "command", command: $usage, refreshInterval: 60}
   ' "$settings" >"$tmp"
 
   if jq -e --slurpfile a "$settings" '. == $a[0]' "$tmp" >/dev/null; then
     rm -f "$tmp"
-    skip "claude hooks and deny rules"
+    skip "claude hooks, deny rules and statusline"
     return
   fi
 
   cp "$settings" "$settings.bak.$BACKUP_STAMP"
   mv "$tmp" "$settings"
-  ok "claude hooks and deny rules -> $settings"
+  ok "claude hooks, deny rules and statusline -> $settings"
 }
 
 link_gitconfig() {
