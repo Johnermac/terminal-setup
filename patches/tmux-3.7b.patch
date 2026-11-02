@@ -317,7 +317,7 @@ index 3508ddb..b1751eb 100644
  		tagged = mode_tree_count_tagged(data->data);
  		if (tagged == 0)
 diff --git a/window.c b/window.c
-index 00ed1a0..7f25a98 100644
+index 00ed1a0..92d8dac 100644
 --- a/window.c
 +++ b/window.c
 @@ -623,10 +623,11 @@ struct window_pane *
@@ -352,3 +352,135 @@ index 00ed1a0..7f25a98 100644
  			/*
  			 * Tiled - to and including the right border, excluding
  			 * the bottom border.
+@@ -1488,6 +1499,37 @@ window_pane_full_size_offset(struct window_pane *wp, int *xoff, int *yoff,
+ 	*sy = wp->sy;
+ }
+ 
++/*
++ * The area used to find a pane's neighbours. With border boxes, a tiled pane
++ * is inset by its box, so use the whole layout cell to keep neighbours one
++ * border apart.
++ */
++static void
++window_pane_find_area(struct window_pane *wp, int *xoff, int *yoff, u_int *sx,
++    u_int *sy)
++{
++	window_pane_full_size_offset(wp, xoff, yoff, sx, sy);
++	if (options_get_number(wp->window->options, "pane-border-boxes") &&
++	    !window_pane_is_floating(wp)) {
++		(*xoff)--;
++		(*yoff)--;
++		*sx += 2;
++		*sy += 2;
++	}
++}
++
++/*
++ * The pane border status that affects finding neighbours. Border boxes draw
++ * it on the box, so it takes no space of its own.
++ */
++static int
++window_pane_find_status(struct window *w)
++{
++	if (options_get_number(w->options, "pane-border-boxes"))
++		return (PANE_STATUS_OFF);
++	return (options_get_number(w->options, "pane-border-status"));
++}
++
+ /*
+  * Find the pane directly above another. We build a list of those adjacent to
+  * top edge and then choose the best.
+@@ -1504,12 +1546,12 @@ window_pane_find_up(struct window_pane *wp)
+ 	if (wp == NULL)
+ 		return (NULL);
+ 	w = wp->window;
+-	status = options_get_number(w->options, "pane-border-status");
++	status = window_pane_find_status(w);
+ 
+ 	list = NULL;
+ 	size = 0;
+ 
+-	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
++	window_pane_find_area(wp, &xoff, &yoff, &sx, &sy);
+ 
+ 	edge = yoff;
+ 	if (status == PANE_STATUS_TOP) {
+@@ -1527,7 +1569,7 @@ window_pane_find_up(struct window_pane *wp)
+ 	right = xoff + (int)sx;
+ 
+ 	TAILQ_FOREACH(next, &w->panes, entry) {
+-		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
++		window_pane_find_area(next, &xoff, &yoff, &sx, &sy);
+ 		if (next == wp)
+ 			continue;
+ 		if (yoff + (int)sy + 1 != edge)
+@@ -1565,12 +1607,12 @@ window_pane_find_down(struct window_pane *wp)
+ 	if (wp == NULL)
+ 		return (NULL);
+ 	w = wp->window;
+-	status = options_get_number(w->options, "pane-border-status");
++	status = window_pane_find_status(w);
+ 
+ 	list = NULL;
+ 	size = 0;
+ 
+-	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
++	window_pane_find_area(wp, &xoff, &yoff, &sx, &sy);
+ 
+ 	edge = yoff + (int)sy + 1;
+ 	if (status == PANE_STATUS_TOP) {
+@@ -1584,11 +1626,11 @@ window_pane_find_down(struct window_pane *wp)
+ 			edge = 0;
+ 	}
+ 
+-	left = wp->xoff;
+-	right = wp->xoff + (int)wp->sx;
++	left = xoff;
++	right = xoff + (int)sx;
+ 
+ 	TAILQ_FOREACH(next, &w->panes, entry) {
+-		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
++		window_pane_find_area(next, &xoff, &yoff, &sx, &sy);
+ 		if (next == wp)
+ 			continue;
+ 		if (yoff != edge)
+@@ -1630,7 +1672,7 @@ window_pane_find_left(struct window_pane *wp)
+ 	list = NULL;
+ 	size = 0;
+ 
+-	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
++	window_pane_find_area(wp, &xoff, &yoff, &sx, &sy);
+ 
+ 	edge = xoff;
+ 	if (edge == 0)
+@@ -1640,7 +1682,7 @@ window_pane_find_left(struct window_pane *wp)
+ 	bottom = yoff + (int)sy;
+ 
+ 	TAILQ_FOREACH(next, &w->panes, entry) {
+-		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
++		window_pane_find_area(next, &xoff, &yoff, &sx, &sy);
+ 		if (next == wp)
+ 			continue;
+ 		if (xoff + (int)sx + 1 != edge)
+@@ -1682,17 +1724,17 @@ window_pane_find_right(struct window_pane *wp)
+ 	list = NULL;
+ 	size = 0;
+ 
+-	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
++	window_pane_find_area(wp, &xoff, &yoff, &sx, &sy);
+ 
+ 	edge = xoff + (int)sx + 1;
+ 	if (edge >= (int)w->sx)
+ 		edge = 0;
+ 
+-	top = wp->yoff;
+-	bottom = wp->yoff + (int)wp->sy;
++	top = yoff;
++	bottom = yoff + (int)sy;
+ 
+ 	TAILQ_FOREACH(next, &w->panes, entry) {
+-		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
++		window_pane_find_area(next, &xoff, &yoff, &sx, &sy);
+ 		if (next == wp)
+ 			continue;
+ 		if (xoff != edge)
