@@ -1,5 +1,9 @@
 # Global instructions
 
+## Reply length
+
+User has ADHD. Keep replies short: only what they must know or act on. No background, no alternatives they didn't ask for, no recap of steps taken.
+
 ## Git commits
 
 - **One line. No body.** The subject line is the whole message.
